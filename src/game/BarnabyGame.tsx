@@ -173,6 +173,8 @@ export default function App() {
   const storeCurrentActionSlot = useGameStore(s => s.currentActionSlot);
   const storeTurnNumber = useGameStore(s => s.turnNumber);
   const storeIsCombat = useGameStore(s => s.isCombat);
+  const storeEnemyHp = useGameStore(s => s.enemyHp);
+  const storeEnemyMaxHp = useGameStore(s => s.enemyMaxHp);
 
   // Refs for async callbacks (setTimeout) to avoid stale closures
   const enemyTurnCountRef = useRef(0);
@@ -1838,8 +1840,8 @@ export default function App() {
                     <div className="flex-1 relative overflow-hidden" style={{ minHeight: '300px' }}>
                       <EnemyCard
                         enemy={enemy}
-                        enemyHp={enemyHp}
-                        enemyMaxHp={enemyMaxHp}
+                        enemyHp={storeEnemyHp > 0 ? storeEnemyHp : enemyHp}
+                        enemyMaxHp={storeEnemyMaxHp > 0 ? storeEnemyMaxHp : enemyMaxHp}
                         enemyActions={storeEnemyActions || []}
                         turnPhase={storeTurnPhase || 'planning'}
                         currentActionSlot={storeCurrentActionSlot || 0}
