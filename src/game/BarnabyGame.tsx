@@ -1235,7 +1235,7 @@ export default function App() {
   const handleAction = useCallback((techName: string) => {
     // ── 4-Action Turn System ──
     // During planning phase: each skill click adds to the action order
-    // After 4 skills selected, auto-confirm and execute the turn
+    // After all available skills selected, auto-confirm and execute the turn
     const storeState = useGameStore.getState();
     const phase = storeState.turnPhase;
 
@@ -1254,17 +1254,27 @@ export default function App() {
     newOrder[insertAt] = techName;
     storeState.setPlayerActionOrder(newOrder);
 
-    // Check if all 4 slots are filled → auto-confirm
+    // Count available (non-worn-out) skills
+    const availableSkills = getEquippedSkills().filter(sk => {
+      const slot = findSkillSlot(sk);
+      const eq = slot ? (gameState.equipment as any)[slot] as EquipSlot | null : null;
+      return !eq || eq.putrefaccion !== 0;
+    });
+    const availableCount = availableSkills.length;
+
+    // Count filled slots after this selection
     const filledSlots = newOrder.filter(s => s && s !== '').length;
-    if (filledSlots >= 4) {
-      // Auto-confirm after a brief delay so the player sees the 4th skill added
+
+    // Auto-confirm when all available skills are selected or all 4 slots filled
+    if (filledSlots >= availableCount || filledSlots >= 4) {
+      // Auto-confirm after a brief delay so the player sees the golden glow
       setTimeout(() => {
         combatActions.confirmPlayerOrder(playSound);
-      }, 300);
+      }, 500);
     }
 
     playSound('click');
-    setCombatMenu('main');
+    // Stay in skills menu so player can see golden glow on selected skills
     return;
 
     // ── Legacy 1-action combat code below (unused, kept for reference) ──
@@ -1845,6 +1855,7 @@ export default function App() {
                         onUseConsumable={useConsumableFromSlot}
                         onFlee={() => endCombat(false)}
                         onConfirmOrder={() => combatActions.confirmPlayerOrder(playSound)}
+                        playerActionOrder={storePlayerActionOrder || ['', '', '', '']}
                       />
                     </div>
 

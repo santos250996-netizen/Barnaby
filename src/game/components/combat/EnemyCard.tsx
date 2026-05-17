@@ -45,6 +45,7 @@ interface EnemyCardProps {
   onUseConsumable: (slotIndex: 0 | 1) => void;
   onFlee: () => void;
   onConfirmOrder: () => void;
+  playerActionOrder: string[];
 }
 
 export function EnemyCard({
@@ -65,6 +66,7 @@ export function EnemyCard({
   onUseConsumable,
   onFlee,
   onConfirmOrder,
+  playerActionOrder,
 }: EnemyCardProps) {
   const img = enemy?.name ? ENEMY_IMAGES[enemy.name] : null;
 
@@ -105,19 +107,38 @@ export function EnemyCard({
             const slot = findSkillSlot(sk);
             const eq = slot ? (equipment as any)[slot] as EquipSlot | null : null;
             const isWornOut = eq && eq.putrefaccion === 0;
+            const isSelected = playerActionOrder.includes(sk);
             return (
               <motion.button
                 key={sk + idx}
-                whileHover={!isWornOut ? { scale: 1.1 } : {}}
-                whileTap={!isWornOut ? { scale: 0.9 } : {}}
-                onClick={(e) => { e.stopPropagation(); if (!isWornOut) onAction(sk); }}
-                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/70 border-2 ${isWornOut ? 'border-gray-500/30 opacity-40 cursor-not-allowed' : t?.type === 'sacrifice' ? 'border-red-400/50 shadow-[0_0_12px_rgba(248,113,113,0.3)] hover:border-red-400' : 'border-accent/50 shadow-[0_0_12px_rgba(212,148,58,0.3)] hover:border-accent'} overflow-hidden transition-all relative`}
+                whileHover={!isWornOut && !isSelected ? { scale: 1.1 } : {}}
+                whileTap={!isWornOut && !isSelected ? { scale: 0.9 } : {}}
+                onClick={(e) => { e.stopPropagation(); if (!isWornOut && !isSelected) onAction(sk); }}
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden transition-all relative ${
+                  isWornOut
+                    ? 'bg-black/70 border-2 border-gray-500/30 opacity-40 cursor-not-allowed'
+                    : isSelected
+                      ? 'bg-black/70 border-2 border-yellow-400 shadow-[0_0_18px_rgba(250,204,21,0.7),0_0_6px_rgba(250,204,21,0.4)_inset] cursor-default'
+                      : t?.type === 'sacrifice'
+                        ? 'bg-black/70 border-2 border-red-400/50 shadow-[0_0_12px_rgba(248,113,113,0.3)] hover:border-red-400'
+                        : 'bg-black/70 border-2 border-accent/50 shadow-[0_0_12px_rgba(212,148,58,0.3)] hover:border-accent'
+                }`}
               >
-                {t?.icon ? <img src={t.icon} alt="" className={`w-full h-full object-cover ${isWornOut ? 'grayscale' : ''}`} loading="lazy" /> : <span className="text-lg sm:text-xl">{t?.emoji || '❓'}</span>}
+                {t?.icon ? <img src={t.icon} alt="" className={`w-full h-full object-cover ${isWornOut ? 'grayscale' : ''} ${isSelected ? 'brightness-125 saturate-150' : ''}`} loading="lazy" /> : <span className="text-lg sm:text-xl">{t?.emoji || '❓'}</span>}
                 {isWornOut && <span className="absolute bottom-0 right-0 text-[6px] bg-red-900 text-white px-0.5">✕</span>}
+                {isSelected && <span className="absolute -top-1 -right-1 text-[8px] font-black text-yellow-300 drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]">{playerActionOrder.indexOf(sk) + 1}</span>}
               </motion.button>
             );
           })}
+          {/* Back button to return to main menu */}
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => { e.stopPropagation(); setCombatMenu('main'); }}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/70 border-2 border-white/20 flex items-center justify-center shadow-[0_0_8px_rgba(255,255,255,0.1)] hover:border-white/40 transition-all"
+          >
+            <span className="text-sm">↩</span>
+          </motion.button>
         </>
       ) : (
         <>
