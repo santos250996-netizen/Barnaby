@@ -36,7 +36,6 @@ import { GeometricCombatButton } from '@/game/components/ui/GeometricCombatButto
 // Combat Components
 import { TurnIndicator } from '@/game/components/combat/TurnIndicator';
 import { EnemyCard } from '@/game/components/combat/EnemyCard';
-import { PlayerIntentBadge } from '@/game/components/combat/PlayerIntentBadge';
 
 // Combat Hook
 import { useCombatActions, getPlayerSlotSkills } from '@/game/hooks/useCombatActions';
@@ -1638,14 +1637,6 @@ export default function App() {
   };
 
   return (
-    <>
-    {isCombat && (
-      <PlayerIntentBadge
-        playerActionOrder={storePlayerActionOrder || ['', '', '', '']}
-        turnPhase={storeTurnPhase || 'planning'}
-        currentActionSlot={storeCurrentActionSlot || 0}
-      />
-    )}
     <div className={`relative w-full h-[100dvh] bg-bg-deep flex items-center justify-center p-2 sm:p-4 overflow-hidden select-none font-mono grain ${screenShake ? 'animate-shake' : ''}`}>
       {/* Visual Enhancers */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -2372,6 +2363,5 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
-    </>
   );
 }
