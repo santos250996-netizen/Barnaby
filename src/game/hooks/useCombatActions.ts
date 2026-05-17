@@ -910,9 +910,8 @@ export function useCombatActions() {
       const enemyActions = calculateEnemyActionsForTurn(enemyData, enemyData.hp, enemyData.hp, false);
       setEnemyActions(enemyActions);
       
-      // Auto-populate player action order with default skills
-      const defaultOrder = getPlayerSlotSkills(state.equipment).map(s => s.skillId);
-      setPlayerActionOrder(defaultOrder);
+      // Start with empty slots — player will select skills manually
+      setPlayerActionOrder(['', '', '', '']);
       
       setTurnPhase('planning');
       setCurrentActionSlot(0);

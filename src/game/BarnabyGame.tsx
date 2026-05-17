@@ -805,9 +805,8 @@ export default function App() {
     const enemyActions = combatActions.calculateEnemyActionsForTurn(enemyData, enemyData.hp, enemyData.hp, false);
     storeState.setEnemyActions(enemyActions);
     
-    // Auto-populate player action order with default skills from equipment slots
-    const defaultOrder = getPlayerSlotSkills(gameState.equipment).map((s: any) => s.skillId);
-    storeState.setPlayerActionOrder(defaultOrder);
+    // Start with empty slots — player will select skills manually
+    storeState.setPlayerActionOrder(['', '', '', '']);
     
     storeState.setTurnPhase('planning');
     storeState.setCurrentActionSlot(0);
