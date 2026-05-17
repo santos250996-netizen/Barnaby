@@ -130,15 +130,7 @@ export function EnemyCard({
               </motion.button>
             );
           })}
-          {/* Back button to return to main menu */}
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={(e) => { e.stopPropagation(); setCombatMenu('main'); }}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/70 border-2 border-white/20 flex items-center justify-center shadow-[0_0_8px_rgba(255,255,255,0.1)] hover:border-white/40 transition-all"
-          >
-            <span className="text-sm">↩</span>
-          </motion.button>
+
         </>
       ) : (
         <>
@@ -188,28 +180,68 @@ export function EnemyCard({
     </div>
   );
 
-  // Render enemy intent badge — NOW SHOWS 4 ACTIONS
+  // Render enemy intent — 4 circles with skill icons + abbreviated text (top-left)
   const renderIntentBadge = () => (
-    <div className="absolute top-2 right-2 flex flex-col gap-0.5 z-20">
-      {enemyActions.length > 0 ? enemyActions.map((action, idx) => {
-        const isExecuting = turnPhase === 'executing' && currentActionSlot === idx;
-        const isDone = turnPhase === 'executing' && currentActionSlot > idx;
-        const hasMaster = action.isMasterSkill;
-        return (
-          <div
-            key={idx}
-            className={`flex items-center gap-1 px-2 py-0.5 bg-[#d4c4a0] border rounded-sm shadow-[0_2px_8px_rgba(0,0,0,0.5)] transition-all ${
-              isDone ? 'opacity-30' : isExecuting ? 'border-red-500 shadow-[0_0_12px_rgba(220,38,38,0.7)] scale-105' : hasMaster ? 'border-yellow-500/80 shadow-[0_0_12px_rgba(234,179,8,0.5)]' : 'border-[#8a7a60]'
-            }`}
-          >
-            <span className={`text-sm sm:text-base ${isExecuting ? 'animate-pulse' : ''} ${hasMaster ? 'drop-shadow-[0_0_10px_rgba(234,179,8,0.6)]' : 'drop-shadow-[0_0_8px_rgba(212,148,58,0.4)]'}`}>{action.icon}</span>
-            <span className={`text-[7px] sm:text-[9px] font-black leading-tight tracking-wider ${hasMaster ? 'text-yellow-700' : 'text-[#5a4020]'}`} dangerouslySetInnerHTML={{ __html: action.text }} />
-          </div>
-        );
-      }) : (
-        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#d4c4a0] border border-[#8a7a60] rounded-sm shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
-          <span className="text-lg sm:text-xl animate-pulse drop-shadow-[0_0_8px_rgba(212,148,58,0.4)]">⚔️</span>
-          <span className="text-[9px] sm:text-[11px] font-black leading-tight tracking-wider text-[#5a4020]">Esperando...</span>
+    <div className="absolute top-2 left-2 z-20">
+      {enemyActions.length > 0 ? (
+        <div className="flex flex-row gap-1">
+          {enemyActions.map((action, idx) => {
+            const isExecuting = turnPhase === 'executing' && currentActionSlot === idx;
+            const isDone = turnPhase === 'executing' && currentActionSlot > idx;
+            const hasMaster = action.isMasterSkill;
+            const skillIcon = action.skillData?.icon || null;
+            const shortName = action.skillData?.name || action.icon;
+            const shortValue = action.type === 'attack' ? `${action.value}` : action.type === 'buff' ? 'BUF' : action.type === 'defend' ? 'DEF' : '';
+
+            return (
+              <div
+                key={idx}
+                className={`flex flex-col items-center transition-all ${
+                  isDone ? 'opacity-25' : ''
+                }`}
+              >
+                <motion.div
+                  animate={isExecuting ? { scale: [1, 1.15, 1] } : {}}
+                  transition={isExecuting ? { duration: 0.8, repeat: Infinity } : {}}
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 relative ${
+                    isExecuting
+                      ? 'border-red-500 shadow-[0_0_14px_rgba(220,38,38,0.7)]'
+                      : hasMaster
+                        ? 'border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]'
+                        : 'border-white/20 shadow-[0_0_6px_rgba(0,0,0,0.5)]'
+                  } bg-black/70`}
+                >
+                  {skillIcon ? (
+                    <img src={skillIcon} alt="" className="w-full h-full object-cover" loading="lazy" />
+                  ) : (
+                    <span className={`text-sm sm:text-base flex items-center justify-center w-full h-full ${isExecuting ? 'animate-pulse' : ''}`}>{action.icon}</span>
+                  )}
+                  {hasMaster && !isDone && (
+                    <span className="absolute -top-0.5 -right-0.5 text-[7px] text-yellow-300 drop-shadow-[0_0_3px_rgba(234,179,8,0.9)]">★</span>
+                  )}
+                </motion.div>
+                <div className={`mt-0.5 text-center leading-none ${isDone ? 'opacity-40' : ''}`}>
+                  <div className={`text-[5px] sm:text-[7px] font-black tracking-tight truncate max-w-[32px] sm:max-w-[40px] ${
+                    hasMaster && !isDone ? 'text-yellow-300' : 'text-white/80'
+                  }`}>
+                    {shortName}
+                  </div>
+                  {shortValue && (
+                    <div className={`text-[5px] sm:text-[7px] font-black ${
+                      isExecuting ? 'text-red-400 animate-pulse' : hasMaster ? 'text-yellow-300/80' : 'text-white/50'
+                    }`}>
+                      {shortValue}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-black/60 border border-white/20 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.5)]">
+          <span className="text-sm sm:text-base animate-pulse">⚔️</span>
+          <span className="text-[8px] sm:text-[10px] font-black tracking-wider text-white/60">Esperando...</span>
         </div>
       )}
     </div>

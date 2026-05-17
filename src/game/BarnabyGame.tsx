@@ -36,6 +36,7 @@ import { GeometricCombatButton } from '@/game/components/ui/GeometricCombatButto
 // Combat Components
 import { TurnIndicator } from '@/game/components/combat/TurnIndicator';
 import { EnemyCard } from '@/game/components/combat/EnemyCard';
+import { PlayerIntentBadge } from '@/game/components/combat/PlayerIntentBadge';
 
 // Combat Hook
 import { useCombatActions, getPlayerSlotSkills } from '@/game/hooks/useCombatActions';
@@ -1637,6 +1638,14 @@ export default function App() {
   };
 
   return (
+    <>
+    {isCombat && (
+      <PlayerIntentBadge
+        playerActionOrder={storePlayerActionOrder || ['', '', '', '']}
+        turnPhase={storeTurnPhase || 'planning'}
+        currentActionSlot={storeCurrentActionSlot || 0}
+      />
+    )}
     <div className={`relative w-full h-[100dvh] bg-bg-deep flex items-center justify-center p-2 sm:p-4 overflow-hidden select-none font-mono grain ${screenShake ? 'animate-shake' : ''}`}>
       {/* Visual Enhancers */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
@@ -1878,38 +1887,7 @@ export default function App() {
                         </div>
                         <span className="text-[7px] sm:text-[9px] font-black text-white/80 font-mono uppercase tracking-tighter whitespace-nowrap">{gameState.pieces}/{getMaxPieces()}</span>
                       </div>
-                      {/* Skill selection indicator during planning phase */}
-                      {storeTurnPhase === 'planning' && storeEnemyActions.length > 0 && (
-                        <div className="flex items-center gap-1.5 mt-1.5">
-                          <span className="text-[7px] sm:text-[8px] text-accent/70 font-bold uppercase tracking-wider">Acciones:</span>
-                          <div className="flex gap-1">
-                            {[0, 1, 2, 3].map(i => {
-                              const selectedSkill = storePlayerActionOrder?.[i];
-                              const tech = selectedSkill ? TDB[selectedSkill] : null;
-                              return (
-                                <div key={i} className={`w-6 h-6 sm:w-7 sm:h-7 rounded border flex items-center justify-center text-[8px] sm:text-[10px] transition-all ${
-                                  selectedSkill && selectedSkill !== ''
-                                    ? tech?.type === 'sacrifice' 
-                                      ? 'bg-red-900/60 border-red-400/50 text-red-300'
-                                      : 'bg-accent/20 border-accent/50 text-accent'
-                                    : 'bg-black/30 border-white/10 text-white/20'
-                                }`}>
-                                  {tech?.emoji || (i + 1)}
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <span className="text-[7px] text-white/40 ml-1">
-                            {storePlayerActionOrder?.filter(s => s && s !== '').length || 0}/4
-                          </span>
-                        </div>
-                      )}
-                      {/* Execution phase indicator */}
-                      {storeTurnPhase === 'executing' && (
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <span className="text-[7px] sm:text-[8px] text-red-400/70 font-bold uppercase tracking-wider animate-pulse">⚔️ Ejecutando {(storeCurrentActionSlot || 0) + 1}/4</span>
-                        </div>
-                      )}
+
                     </div>
                   </div>
                 ) : (
@@ -2394,5 +2372,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </>
   );
 }
