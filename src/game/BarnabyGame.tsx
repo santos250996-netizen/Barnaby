@@ -175,6 +175,23 @@ export default function App() {
   const storeIsCombat = useGameStore(s => s.isCombat);
   const storeEnemyHp = useGameStore(s => s.enemyHp);
   const storeEnemyMaxHp = useGameStore(s => s.enemyMaxHp);
+  const storePieces = useGameStore(s => s.pieces);
+
+  // Sync local isCombat with Zustand store — the 4-action system ends combat via store.endCombat()
+  React.useEffect(() => {
+    if (!storeIsCombat && isCombat) {
+      setIsCombat(false);
+      setCombatMenu('main');
+      setEnemy(null);
+    }
+  }, [storeIsCombat]);
+
+  // During combat, sync gameState.pieces with store (enemy attacks update store directly)
+  React.useEffect(() => {
+    if (isCombat && storePieces !== undefined && storePieces !== gameState.pieces) {
+      setGameState(prev => ({ ...prev, pieces: storePieces }));
+    }
+  }, [isCombat, storePieces]);
 
   // Refs for async callbacks (setTimeout) to avoid stale closures
   const enemyTurnCountRef = useRef(0);
