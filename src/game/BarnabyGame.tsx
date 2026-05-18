@@ -564,8 +564,10 @@ export default function App() {
   }, [gameState, showIntro]);
 
   // --- Death Check ---
+  const deathHandledRef = useRef(false);
   useEffect(() => {
-    if (gameState.pieces <= 0 && !showIntro && !modal) {
+    if (gameState.pieces <= 0 && !showIntro && !modal && !deathHandledRef.current) {
+      deathHandledRef.current = true;
       playSound('death');
       const shards = gameState.resources.shards;
       const canPay = shards >= 100;
@@ -589,6 +591,10 @@ export default function App() {
               dungeon: null,
             };
           });
+          setModal(null);
+          setIsCombat(false);
+          setEnemy(null);
+          setCombatMenu('main');
           showToast(canPay ? "Recompuesto por 100💎" : "Has perdido todas tus parts...", canPay ? 'info' : 'error');
         },
         onCancel: () => {
@@ -602,11 +608,22 @@ export default function App() {
             storyFlags: { ...prev.storyFlags, inDungeon: false },
             dungeon: null,
           }));
+          setModal(null);
+          setIsCombat(false);
+          setEnemy(null);
+          setCombatMenu('main');
           showToast("Has perdido todas tus parts...", 'error');
         },
       });
     }
   }, [gameState.pieces, showIntro, modal, playSound, gameState.resources.shards, showToast]);
+
+  // Reset death handled flag when player is alive again
+  useEffect(() => {
+    if (gameState.pieces > 0) {
+      deathHandledRef.current = false;
+    }
+  }, [gameState.pieces]);
 
   useEffect(() => {
     if (storyWindowRef.current) {
