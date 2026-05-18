@@ -404,14 +404,17 @@ export function startCombat(args: {
   const zoneName = gameState.currentLocation;
   const zoneMaxRarityIdx = getZoneMaxRarityIndex(zoneName);
 
-  // Apply ALL enemy parts' stats to enemy (enemy IS the creature with all its parts)
+  // Pre-roll: ONE rarity for ALL enemy parts stats + skills + drop
   const partNames: string[] = (ENM[enemyName] as any)?.parts?.map((p: any) => p.name) || [];
+  const combatRarity = rollRarity(zoneMaxRarityIdx);
+
+  // Apply ALL enemy parts' stats scaled by combatRarity
   for (const partName of partNames) {
     const partData = getItemData(partName);
     if (partData && partData.stats) {
-      const partRarity = (partData.rarity || 'comun') as Rarity;
+      const listedRarity = (partData.rarity || 'comun') as Rarity;
       for (const [stat, val] of Object.entries(partData.stats)) {
-        const scaled = scaleStat(val as number, partRarity, partRarity);
+        const scaled = scaleStat(val as number, listedRarity, combatRarity);
         if (stat === 'attack') enemyData.attack = (enemyData.attack || 0) + scaled;
         else if (stat === 'defense') enemyData.defense = (enemyData.defense || 0) + scaled;
         else if (stat === 'magic') enemyData.magic = (enemyData.magic || 0) + scaled;
@@ -422,24 +425,21 @@ export function startCombat(args: {
     }
   }
 
-  // Pre-roll drop (one random part — only for loot, stats already applied above)
+  // Apply combatRarity to ALL enemy skills
+  const skillRarities: Record<string, Rarity> = {};
+  for (const partName of partNames) {
+    const partData = getItemData(partName);
+    if (partData?.skillIds) {
+      partData.skillIds.forEach((skId: string) => { skillRarities[skId] = combatRarity; });
+    }
+  }
+  if (Object.keys(skillRarities).length > 0) enemyData._skillRarities = skillRarities;
+
+  // Pre-roll drop: random part with combatRarity
   let preRoll: PreRolledDrop | null = null;
   if (partNames.length > 0) {
     const dropPartName = partNames[Math.floor(Math.random() * partNames.length)];
-    const partData = getItemData(dropPartName);
-    if (partData) {
-      const itemRarity = rollRarity(zoneMaxRarityIdx);
-      const skillRarities: Record<string, Rarity> = {};
-      if (partData.skillIds) {
-        partData.skillIds.forEach((skId: string) => {
-          skillRarities[skId] = rollRarity(zoneMaxRarityIdx);
-        });
-      }
-      if (partData.skillIds && enemyData.intentPattern) {
-        enemyData._skillRarities = skillRarities;
-      }
-      preRoll = { itemName: dropPartName, itemRarity, skillRarities, partStats: {} };
-    }
+    preRoll = { itemName: dropPartName, itemRarity: combatRarity, skillRarities, partStats: {} };
   }
 
   const playerSpeed = getSpeed(gameState);
