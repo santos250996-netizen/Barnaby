@@ -91,20 +91,28 @@ export function EnemyCard({
     const slot = findSkillSlot(sk);
     const { level, pState, isDestroyed } = getSkillPutref(sk);
     const mutation = t ? getMutation(t.type, level) : null;
-    const isSelected = playerActionOrder.includes(sk);
+    // Contar cuántas veces ya se seleccionó esta skill en el orden actual
+    const timesSelected = playerActionOrder.filter(s => s === sk).length;
+    const isAtLeastOnce = timesSelected > 0;
     const isHovered = hoveredSkill === sk;
-    const canInteract = !isDestroyed && !isSelected;
+    // Se puede interactuar si no está destruida Y no se excedería el máximo de putrefacción
+    // Las veces que se puede usar = PUTREFACCION_MAX - putrefacción actual
+    const remainingUses = PUTREFACCION_MAX - level;
+    const canInteract = !isDestroyed && timesSelected < remainingUses;
 
     let btnClass = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden transition-all relative ';
     if (isDestroyed) {
       btnClass += 'bg-black/70 border-2 border-gray-500/30 opacity-40 cursor-not-allowed';
-    } else if (isSelected) {
-      btnClass += 'bg-black/70 border-2 border-yellow-400 cursor-default';
+    } else if (!canInteract && isAtLeastOnce) {
+      // Seleccionada al máximo de usos permitidos
+      btnClass += 'bg-black/70 border-2 border-red-400/60 cursor-not-allowed';
+    } else if (isAtLeastOnce) {
+      btnClass += 'bg-black/70 border-2 border-yellow-400';
     } else {
       btnClass += 'bg-black/70 border-2';
     }
 
-    const glowStyle = (!isDestroyed && !isSelected && level > 0) ? (() => {
+    const glowStyle = (!isDestroyed && level > 0) ? (() => {
       if (level === 3) return { borderColor: '#dc2626', boxShadow: '0 0 18px rgba(220,38,38,0.8)' };
       if (level === 2) return { borderColor: '#f97316', boxShadow: '0 0 14px rgba(249,115,22,0.6)' };
       if (level === 1) return { borderColor: '#a3e635', boxShadow: '0 0 10px rgba(163,230,53,0.4)' };
@@ -113,10 +121,12 @@ export function EnemyCard({
 
     const imgClass = ['w-full h-full object-cover'];
     if (isDestroyed) imgClass.push('grayscale');
-    if (isSelected) imgClass.push('brightness-125 saturate-150');
+    if (isAtLeastOnce) imgClass.push('brightness-125 saturate-150');
 
-    const showTooltip = isHovered && !isDestroyed && level > 0 && mutation;
+    // Tooltip: mostrar info de putrefacción cuando hay level > 0 O cuando está al máximo de usos
+    const showTooltip = isHovered && !isDestroyed && (level > 0 || isAtLeastOnce) && mutation;
     const showDestroyedTooltip = isHovered && isDestroyed;
+    const showMaxedTooltip = isHovered && !canInteract && isAtLeastOnce && !isDestroyed;
 
     return (
       <div key={sk + idx} className="relative">
@@ -134,9 +144,9 @@ export function EnemyCard({
             : <span className="text-lg sm:text-xl">{t?.emoji || '?'}</span>
           }
           {isDestroyed && <span className="absolute bottom-0 right-0 text-[6px] bg-red-900 text-white px-0.5">X</span>}
-          {isSelected && (
+          {isAtLeastOnce && (
             <span className="absolute -top-1 -right-1 text-[8px] font-black text-yellow-300" style={{ textShadow: '0 0 4px rgba(250,204,21,0.8)' }}>
-              {playerActionOrder.indexOf(sk) + 1}
+              {timesSelected === 1 ? playerActionOrder.indexOf(sk) + 1 : `x${timesSelected}`}
             </span>
           )}
           {!isDestroyed && level > 0 && (
@@ -158,7 +168,15 @@ export function EnemyCard({
                 {pState.emoji} {slotName(slot || '')} - {pState.name}
               </div>
               {mutation.logDesc && <div className="text-white/70 mt-0.5">{mutation.logDesc}</div>}
-              <div className="text-white/40 mt-0.5">Usos restantes: {PUTREFACCION_MAX - level}</div>
+              <div className="text-white/40 mt-0.5">Usos restantes: {remainingUses}{isAtLeastOnce ? ` (seleccionada x${timesSelected})` : ''}</div>
+            </div>
+          </div>
+        )}
+        {showMaxedTooltip && !showTooltip && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+            <div className="bg-black/90 border border-red-500/50 rounded-lg px-2 py-1 text-[7px] sm:text-[8px] whitespace-nowrap">
+              <div className="font-black text-red-400">{slotName(slot || '')} al máximo</div>
+              <div className="text-white/50">No más usos este combate</div>
             </div>
           </div>
         )}

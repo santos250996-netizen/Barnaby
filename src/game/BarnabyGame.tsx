@@ -19,7 +19,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Sword, Shield, Zap, Settings, X } from 'lucide-react';
-import { TDB, LOC, ENM, QST, QB, SETS, LORE_DATA, getItemData, rollRarity, scaleStat, scaleSkillValue, scaleSkillPercent, RARITY_CONFIG, RARITY_STAT_FACTOR, Rarity, RARITIES, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex } from '@/game/constants';
+import { TDB, LOC, ENM, QST, QB, SETS, LORE_DATA, getItemData, rollRarity, scaleStat, scaleSkillValue, scaleSkillPercent, RARITY_CONFIG, RARITY_STAT_FACTOR, Rarity, RARITIES, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex, PUTREFACCION_MAX } from '@/game/constants';
 import { useAudio } from '@/game/useAudio';
 import { usePreloadContext, usePrefetchAdjacent, preloadEnemyImages } from '@/game/hooks';
 import dynamic from 'next/dynamic';
@@ -1367,7 +1367,8 @@ export default function App() {
   const handleAction = useCallback((techName: string) => {
     // ── 4-Action Turn System ──
     // During planning phase: each skill click adds to the action order
-    // After all available skills selected, auto-confirm and execute the turn
+    // Skills can be repeated up to (PUTREFACCION_MAX - currentPutrefaccion) times
+    // After all 4 slots filled, auto-confirm and execute the turn
     const storeState = useGameStore.getState();
     const phase = storeState.turnPhase;
 
@@ -1380,26 +1381,26 @@ export default function App() {
 
     if (insertAt >= 4) return; // All 4 slots filled
 
+    // ── Validar putrefacción: no permitir exceder el máximo de usos ──
+    const slot = findSkillSlot(techName);
+    if (slot) {
+      const currentPutref = storePlayerPutrefaccion?.[slot] || 0;
+      const timesAlreadySelected = currentOrder.filter(s => s === techName).length;
+      const remainingUses = PUTREFACCION_MAX - currentPutref;
+      if (timesAlreadySelected >= remainingUses) return; // No más usos permitidos
+    }
+
     // Add skill to the order
     const newOrder = [...currentOrder];
     while (newOrder.length < 4) newOrder.push('');
     newOrder[insertAt] = techName;
     storeState.setPlayerActionOrder(newOrder);
 
-    // Count available (non-worn-out) skills
-    const availableSkills = getEquippedSkills().filter(sk => {
-      const slot = findSkillSlot(sk);
-      if (!slot) return true;
-      const putrefLevel = storePlayerPutrefaccion?.[slot] || 0;
-      return putrefLevel < 4; // PUTREFACCION_MAX = 4
-    });
-    const availableCount = availableSkills.length;
-
     // Count filled slots after this selection
     const filledSlots = newOrder.filter(s => s && s !== '').length;
 
-    // Auto-confirm when all available skills are selected or all 4 slots filled
-    if (filledSlots >= availableCount || filledSlots >= 4) {
+    // Auto-confirm when all 4 slots are filled
+    if (filledSlots >= 4) {
       // Auto-confirm after a brief delay so the player sees the golden glow
       setTimeout(() => {
         combatActions.confirmPlayerOrder(playSound);

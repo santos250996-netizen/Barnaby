@@ -218,3 +218,31 @@ Stage Summary:
 - Enemy infection: each Necrotico skill use adds +1 enemy putrefaccion, causing 2 dmg/turn and -5% enemy damage per point
 - Per-combat reset (decision 1-A), lose skill only (2-A), no mid-combat repair (3-A), unique effects per state (4-B), enemy infection suffers only (5-C), diminishing feedback on reuse (6-B)
 - Build passes successfully
+---
+Task ID: 1
+Agent: Super Z (main)
+Task: Cambiar botones de acción de skills para permitir re-uso con límite de putrefacción
+
+Work Log:
+- Explorado el sistema de combate completo: 4-action turn, planning phase, execution phase
+- Identificado el problema: `canInteract = !isDestroyed && !isSelected` bloqueaba re-selección
+- Modificado `EnemyCard.tsx` → `renderSkillButton`:
+  - `timesSelected = playerActionOrder.filter(s => s === sk).length` cuenta repeticiones
+  - `remainingUses = PUTREFACCION_MAX - level` calcula usos disponibles
+  - `canInteract = !isDestroyed && timesSelected < remainingUses` permite re-uso hasta el límite
+  - Badge muestra `x2`, `x3` cuando se selecciona múltiples veces
+  - Borde rojo cuando está al máximo de usos (no destruida pero saturada)
+  - Tooltip "al máximo" cuando no quedan más usos
+  - Tooltip de putrefacción muestra "seleccionada x{n}" cuando ya está en la cola
+- Modificado `BarnabyGame.tsx` → `handleAction`:
+  - Validación: `timesAlreadySelected >= remainingUses` → bloquea agregar más
+  - Importado `PUTREFACCION_MAX` desde `@/game/constants`
+  - Auto-confirm simplificado: solo se activa cuando las 4 slots están llenas (no por skills disponibles)
+- Lint ejecutado: 0 nuevos errores (3 errores pre-existentes de hooks)
+
+Stage Summary:
+- Archivos modificados: `EnemyCard.tsx`, `BarnabyGame.tsx`
+- El jugador ahora puede seleccionar la misma skill múltiples veces en un turno
+- El límite es PUTREFACCION_MAX (4) - putrefacción actual de la parte
+- Auto-confirm solo cuando 4 slots están llenos
+- El sistema de putrefacción (data layer) ya estaba completamente implementado
