@@ -194,6 +194,7 @@ export function useCombatActions() {
   const setCurrentActor = useGameStore(s => s.setCurrentActor);
 
   const playerStunCountRef = useRef(0);
+  const enemyStunCountRef = useRef(0);
   const executionTimerRef = useRef<NodeJS.Timeout | null>(null);
   // Use refs for circular function references to avoid stale closures
   const endTurnRef = useRef<(playSound: (type: string) => void) => void>(() => {});
@@ -424,8 +425,24 @@ export function useCombatActions() {
       triggerFloatingNumber(`+${tech.heal}`, 'heal');
       triggerCombatVfx('heal', 'player');
     }
-    if (tech.freeze) { updateCombatFx({ enemyFrozen: true }); triggerCombatVfx('freeze', 'enemy'); playSound('freeze'); }
-    if (tech.bleed) { updateCombatFx({ enemyBleed: tech.bleed, enemyBleedTurns: 3 }); playSound('bleed'); }
+    if (tech.freeze) {
+      const currentStun = enemyStunCountRef.current;
+      let resisted = false;
+      if (currentStun >= 2) resisted = true;
+      else if (currentStun === 1) resisted = Math.random() < 0.5;
+      if (resisted) {
+        addCombatLog({ text: '¡El enemigo resiste la parálisis!', type: 'effect' });
+        // Immune → reset counter so future stuns can work again
+        if (currentStun >= 2) enemyStunCountRef.current = 0;
+      } else {
+        addCombatLog({ text: '¡Paralizado! El enemigo pierde su próxima acción.', type: 'effect' });
+        updateCombatFx({ enemyFrozen: true });
+      }
+      enemyStunCountRef.current = currentStun >= 2 ? 0 : currentStun + 1;
+      triggerCombatVfx('freeze', 'enemy');
+      playSound('freeze');
+    }
+    if (tech.bleed) { updateCombatFx({ enemyBleed: tech.bleed, enemyBleedTurns: 999 }); playSound('bleed'); }
     if (tech.debuff) { updateCombatFx({ enemyDebuff: true, enemyDebuffTurns: 2 }); triggerCombatVfx('debuff', 'enemy'); playSound('debuff'); }
     if (tech.shield) updateCombatFx({ playerShield: true });
 
@@ -536,7 +553,7 @@ export function useCombatActions() {
       if (skillData?.bleed && !combatFx.playerBleed) {
         const scaledBleed = Math.max(1, Math.floor(skillData.bleed * sMult));
         addCombatLog({ text: `¡Sangrado! -${scaledBleed} piezas/turno`, type: 'effect' });
-        updateCombatFx({ playerBleed: true, playerBleedTurns: 3, playerBleedDmg: scaledBleed });
+        updateCombatFx({ playerBleed: true, playerBleedTurns: 999, playerBleedDmg: scaledBleed });
         triggerCombatVfx('bleed', 'player');
       }
       if (skillData?.debuff) {
@@ -567,11 +584,13 @@ export function useCombatActions() {
         else if (currentStun === 1) resisted = Math.random() < 0.5;
         if (resisted) {
           addCombatLog({ text: '¡Barnaby resiste la parálisis!', type: 'effect' });
+          // Immune → reset counter so future stuns can work again
+          if (currentStun >= 2) playerStunCountRef.current = 0;
         } else {
           addCombatLog({ text: '¡Paralizado! Próxima acción saltada.', type: 'effect' });
           updateCombatFx({ playerFrozen: true, playerStunCount: currentStun + 1 });
         }
-        playerStunCountRef.current = currentStun + 1;
+        playerStunCountRef.current = currentStun >= 2 ? 0 : currentStun + 1;
         triggerCombatVfx('freeze', 'player');
         playSound('freeze');
       }
@@ -601,34 +620,26 @@ export function useCombatActions() {
     // Process end-of-turn effects (bleed, poison ticks)
     const combatFx = state.combatFx || DEFAULT_COMBAT_FX;
     
-    // Enemy bleed/poison tick
-    if (combatFx.enemyBleed > 0 && combatFx.enemyBleedTurns > 0) {
+    // Enemy bleed/poison tick — permanent until combat ends or cleansed
+    if (combatFx.enemyBleed > 0) {
       const newHp = Math.max(0, state.enemyHp - combatFx.enemyBleed);
       setEnemyHp(newHp);
       addCombatLog({ text: `Sangrado: -${combatFx.enemyBleed}`, type: 'effect' });
-      const newTurns = combatFx.enemyBleedTurns - 1;
-      updateCombatFx({ enemyBleedTurns: newTurns, enemyBleed: newTurns > 0 ? combatFx.enemyBleed : 0 });
     }
-    if (combatFx.enemyPoison > 0 && combatFx.enemyPoisonTurns > 0) {
+    if (combatFx.enemyPoison > 0) {
       const newHp = Math.max(0, state.enemyHp - combatFx.enemyPoison);
       setEnemyHp(newHp);
       addCombatLog({ text: `Veneno: -${combatFx.enemyPoison}`, type: 'effect' });
-      const newTurns = combatFx.enemyPoisonTurns - 1;
-      updateCombatFx({ enemyPoisonTurns: newTurns, enemyPoison: newTurns > 0 ? combatFx.enemyPoison : 0 });
     }
     
-    // Player bleed/poison tick
-    if (combatFx.playerBleed && combatFx.playerBleedTurns > 0) {
-      setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - (combatFx.playerBleedDmg || 0)) }));
+    // Player bleed/poison tick — permanent until combat ends or cleansed
+    if (combatFx.playerBleed && combatFx.playerBleedDmg > 0) {
+      setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - combatFx.playerBleedDmg) }));
       addCombatLog({ text: `Sangrado: -${combatFx.playerBleedDmg} piezas`, type: 'effect' });
-      const newTurns = combatFx.playerBleedTurns - 1;
-      updateCombatFx({ playerBleedTurns: newTurns, playerBleed: newTurns > 0 });
     }
-    if (combatFx.playerPoison && combatFx.playerPoisonTurns > 0) {
-      setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - (combatFx.playerPoisonDmg || 0)) }));
+    if (combatFx.playerPoison && combatFx.playerPoisonDmg > 0) {
+      setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - combatFx.playerPoisonDmg) }));
       addCombatLog({ text: `Veneno: -${combatFx.playerPoisonDmg} piezas`, type: 'effect' });
-      const newTurns = combatFx.playerPoisonTurns - 1;
-      updateCombatFx({ playerPoisonTurns: newTurns, playerPoison: newTurns > 0 });
     }
     
     // Decrement debuff/fury timers
@@ -925,6 +936,7 @@ export function useCombatActions() {
       setTurnNumber(0);
       setTempBuffs({ ...DEFAULT_TEMP_BUFFS });
       playerStunCountRef.current = 0;
+      enemyStunCountRef.current = 0;
 
       playSound('vs');
       setVsSlam(true);
