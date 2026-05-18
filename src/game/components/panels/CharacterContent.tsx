@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Skull, Sword, Shield, Zap, Activity, Footprints, TrendingUp, X } from 'lucide-react';
+import { Skull, Sword, Shield, Zap, Activity, Footprints, TrendingUp, X, Flame, Wind } from 'lucide-react';
 import { EquipSlot, GameState } from '@/game/types';
 import { getItemData, TDB, SETS, RARITY_CONFIG, Rarity, scaleStat, SKILL_RARITY_MULTIPLIER } from '@/game/constants';
 import { StatItem } from '@/game/components/ui/StatItem';
@@ -12,11 +12,14 @@ interface CharacterContentProps {
   state: GameState;
   getAttack: () => number;
   getDefense: () => number;
+  getMagic: () => number;
+  getMagicRes: () => number;
+  getSpeed: () => number;
   getCrit: () => number;
   getMaxPieces: () => number;
 }
 
-export function CharacterContent({ state, getAttack, getDefense, getCrit, getMaxPieces }: CharacterContentProps) {
+export function CharacterContent({ state, getAttack, getDefense, getMagic, getMagicRes, getSpeed, getCrit, getMaxPieces }: CharacterContentProps) {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
 
   const slots = [
@@ -182,11 +185,13 @@ export function CharacterContent({ state, getAttack, getDefense, getCrit, getMax
       </AnimatePresence>
 
       <div className="grid grid-cols-2 gap-px bg-border border border-border">
+        <StatItem label="ATK" value={`${getAttack()}`} icon={<Sword size={12} />} />
+        <StatItem label="DEF" value={`${getDefense()}`} icon={<Shield size={12} />} />
+        <StatItem label="MAG" value={`${getMagic()}`} icon={<Flame size={12} />} />
+        <StatItem label="MAG RES" value={`${getMagicRes()}`} icon={<Shield size={12} />} />
+        <StatItem label="SPD" value={`${getSpeed()}`} icon={<Wind size={12} />} />
+        <StatItem label="CRIT" value={`${getCrit()}%`} icon={<Zap size={12} />} />
         <StatItem label="Piezas" value={`${state.pieces}/${getMaxPieces()}`} icon={<Shield size={12} />} />
-        <StatItem label="Integridad" value={`${Math.floor(state.pieces / Math.max(1, getMaxPieces()) * 100)}%`} icon={<Skull size={12} />} />
-        <StatItem label="Ataque" value={`+${getAttack()}`} icon={<Sword size={12} />} />
-        <StatItem label="Defensa" value={`+${getDefense()}`} icon={<Shield size={12} />} />
-        <StatItem label="Crítico" value={`${getCrit()}%`} icon={<Zap size={12} />} />
         <StatItem label="Victorias" value={state.wins.toString()} icon={<TrendingUp size={12} />} />
       </div>
 

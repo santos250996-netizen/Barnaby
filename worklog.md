@@ -105,3 +105,25 @@ Stage Summary:
 - Fixed toast visibility: Zustand toasts now sync to local toasts for UI display
 - No new TypeScript errors introduced
 - Key files modified: src/game/BarnabyGame.tsx
+---
+Task ID: 1
+Agent: Main Agent
+Task: Vaciar set bonus stats, actualizar UI con 6 stats, limpiar gearscore
+
+Work Log:
+- Vacíed stats de todos los set bonuses en sets.ts (18 sets), dejando estructura con desc "Efecto pendiente"
+- Actualizado InventoryContent.tsx: agregadas props getMagic, getMagicRes, getSpeed; stats row ahora muestra 6 stats (ATK, DEF, MAG, MAG RES, SPD, CRIT)
+- Actualizado CharacterContent.tsx: mismas 6 stats en grid 2x4
+- Actualizado BarnabyGame.tsx sidebar: 6 stats en lugar de 3, tooltips actualizados a "Base 3"
+- Simplificadas getAttack/getDefense/getMagic/getMagicRes/getSpeed/getCrit en BarnabyGame.tsx (base 3, sin set bonus loop)
+- Simplificadas mismas funciones en combat.ts (base 3, sin set bonus loop)
+- Agregadas getMagic() y getMagicRes() nuevas a combat.ts
+- Limpio gearscore: eliminado set bonus calculation, solo suma stats × rarity_mult
+- Eliminado import de SETS en combat.ts (ya no se usa directamente)
+
+Stage Summary:
+- Sets vacíos pero estructura preservada para futuro
+- UI muestra 6 stats (ATK, DEF, MAG, MAG RES, SPD, CRIT) en inventario, personaje y sidebar
+- Base stats cambiadas a 3 uniforme para todas
+- Sin errores nuevos de compilación
+

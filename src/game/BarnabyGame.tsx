@@ -330,42 +330,21 @@ export default function App() {
 
   const getGearScore = useCallback(() => {
     let totalStats = 0;
-    let rarityWeightSum = 0;
-    let equippedCount = 0;
 
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) {
         const itemData = getItemData(eq.id);
         const stats = itemData.stats || {};
         const rarityMult = RARITY_CONFIG[eq.rarity].multiplier;
-        // Sum all weighted stats for this piece
+        // Sum all 6 weighted stats for this piece (no HP — HP is not a stat)
         const pieceStats = (stats.attack || 0) + (stats.defense || 0) + (stats.speed || 0) + (stats.crit || 0) + (stats.magic || 0) + (stats.magicRes || 0);
         totalStats += pieceStats * rarityMult;
-        rarityWeightSum += rarityMult;
-        equippedCount++;
       }
     });
 
-    // Add set bonus stats (weighted by average rarity of equipped pieces)
-    const sets = getActiveSets();
-    let setStatBonus = 0;
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        const avgMult = equippedCount > 0 ? rarityWeightSum / equippedCount : 1;
-        if ((count as number) >= 2) {
-          const b2 = setData.bonus2.stats || {};
-          setStatBonus += ((b2.attack || 0) + (b2.defense || 0) + (b2.speed || 0) + (b2.crit || 0) + (b2.magic || 0) + (b2.magicRes || 0)) * avgMult;
-        }
-        if ((count as number) >= 4) {
-          const b4 = setData.bonus4.stats || {};
-          setStatBonus += ((b4.attack || 0) + (b4.defense || 0) + (b4.speed || 0) + (b4.crit || 0) + (b4.magic || 0) + (b4.magicRes || 0)) * avgMult;
-        }
-      }
-    });
-
-    return Math.floor(totalStats + setStatBonus);
-  }, [gameState.equipment, getActiveSets]);
+    // Set bonuses: stats vacíos por ahora, se implementarán en el futuro
+    return Math.floor(totalStats);
+  }, [gameState.equipment]);
 
   const getGearRank = useCallback((gs: number) => {
     if (gs >= 350) return { label: 'Leyenda', color: '#eab308' };
@@ -390,107 +369,48 @@ export default function App() {
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.attack || 0;
     });
-    
-    // Set Bonuses
-    const sets = getActiveSets();
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        if ((count as number) >= 2) bonus += setData.bonus2.stats?.attack || 0;
-        if ((count as number) >= 4) bonus += setData.bonus4.stats?.attack || 0;
-      }
-    });
-
     return 3 + bonus;
-  }, [gameState.equipment, getActiveSets]);
+  }, [gameState.equipment]);
 
   const getDefense = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.defense || 0;
     });
-
-    // Set Bonuses
-    const sets = getActiveSets();
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        if ((count as number) >= 2) bonus += setData.bonus2.stats?.defense || 0;
-        if ((count as number) >= 4) bonus += setData.bonus4.stats?.defense || 0;
-      }
-    });
-
     return 3 + bonus;
-  }, [gameState.equipment, getActiveSets]);
+  }, [gameState.equipment]);
 
   const getCrit = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.crit || 0;
     });
-
-    // Set Bonuses
-    const sets = getActiveSets();
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        if ((count as number) >= 2) bonus += setData.bonus2.stats?.crit || 0;
-        if ((count as number) >= 4) bonus += setData.bonus4.stats?.crit || 0;
-      }
-    });
-
     return gameState.resources.crit + bonus;
-  }, [gameState.resources.crit, gameState.equipment, getActiveSets]);
+  }, [gameState.resources.crit, gameState.equipment]);
 
   const getMagic = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magic || 0;
     });
-    const sets = getActiveSets();
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        if ((count as number) >= 2) bonus += setData.bonus2.stats?.magic || 0;
-        if ((count as number) >= 4) bonus += setData.bonus4.stats?.magic || 0;
-      }
-    });
     return 3 + bonus;
-  }, [gameState.equipment, getActiveSets]);
+  }, [gameState.equipment]);
 
   const getMagicRes = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magicRes || 0;
     });
-    const sets = getActiveSets();
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        if ((count as number) >= 2) bonus += setData.bonus2.stats?.magicRes || 0;
-        if ((count as number) >= 4) bonus += setData.bonus4.stats?.magicRes || 0;
-      }
-    });
     return 3 + bonus;
-  }, [gameState.equipment, getActiveSets]);
+  }, [gameState.equipment]);
 
   const getSpeed = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
       if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.speed || 0;
     });
-
-    const sets = getActiveSets();
-    Object.entries(sets).forEach(([setName, count]) => {
-      const setData = (SETS as any)[setName];
-      if (setData) {
-        if ((count as number) >= 2) bonus += setData.bonus2.stats?.speed || 0;
-        if ((count as number) >= 4) bonus += setData.bonus4.stats?.speed || 0;
-      }
-    });
-
-    return 8 + bonus;
-  }, [gameState.equipment, getActiveSets]);
+    return 3 + bonus;
+  }, [gameState.equipment]);
 
 
 
@@ -2323,10 +2243,13 @@ export default function App() {
                     <aside className="hidden lg:flex w-72 flex-col gap-4 overflow-hidden">
                       <div className="bg-bg-card border-2 border-border rounded-none p-5 shadow-2xl flex flex-col overflow-hidden">
                         <h3 className="text-accent font-display text-lg mb-4 border-b border-border pb-2 uppercase tracking-tighter">Estado Óseo</h3>
-                        <div className="space-y-4">
-                          <StatRow label="Ataque" value={`+${getAttack()}`} tooltip={`Base 8 + Equipo`} />
-                          <StatRow label="Defensa" value={`+${getDefense()}`} tooltip={`Base 2 + Equipo`} />
-                          <StatRow label="Crítico" value={`${getCrit()}%`} tooltip="Base 5% + Equipo" />
+      <div className="space-y-4">
+                          <StatRow label="ATK" value={`${getAttack()}`} tooltip="Base 3 + Equipo" />
+                          <StatRow label="DEF" value={`${getDefense()}`} tooltip="Base 3 + Equipo" />
+                          <StatRow label="MAG" value={`${getMagic()}`} tooltip="Base 3 + Equipo" />
+                          <StatRow label="MAG RES" value={`${getMagicRes()}`} tooltip="Base 3 + Equipo" />
+                          <StatRow label="SPD" value={`${getSpeed()}`} tooltip="Base 3 + Equipo" />
+                          <StatRow label="CRIT" value={`${getCrit()}%`} tooltip="Base 5% + Equipo" />
                         </div>
 
                         <div className="mt-8 flex-1">
@@ -2367,7 +2290,7 @@ export default function App() {
                 <button onClick={() => setActivePanel(null)} className="p-1 hover:bg-red-900/30 rounded-none text-[#5a3a10] hover:text-red-800 border border-transparent hover:border-red-800/50 transition-all"><X size={20} /></button>
               </div>
               <div className="p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                {activePanel === 'inventory' && <InventoryContent state={gameState} getMaxPieces={getMaxPieces} getAttack={getAttack} getDefense={getDefense} getCrit={getCrit} onUse={(id: string) => {
+                {activePanel === 'inventory' && <InventoryContent state={gameState} getMaxPieces={getMaxPieces} getAttack={getAttack} getDefense={getDefense} getMagic={getMagic} getMagicRes={getMagicRes} getSpeed={getSpeed} getCrit={getCrit} onUse={(id: string) => {
                   if (id === 'potion') usePotion();
                 }} onEquipConsumable={(slotIndex: 0 | 1, itemId: string) => equipConsumable(slotIndex, itemId)} onEquip={(invItem: InventoryItem) => {
                   const data = getItemData(invItem.id);

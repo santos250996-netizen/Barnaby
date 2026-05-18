@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Skull, Sword, Shield, Zap, Activity, Footprints, Package, Backpack, X } from 'lucide-react';
+import { Skull, Sword, Shield, Zap, Activity, Footprints, Package, Backpack, X, Flame, Wind } from 'lucide-react';
 import { InventoryItem, EquipSlot, GameState } from '@/game/types';
 import { getItemData, SETS, TDB, RARITY_CONFIG, Rarity, scaleStat, SKILL_RARITY_MULTIPLIER } from '@/game/constants';
 import { StatItem } from '@/game/components/ui/StatItem';
@@ -17,10 +17,13 @@ interface InventoryContentProps {
   getMaxPieces: () => number;
   getAttack: () => number;
   getDefense: () => number;
+  getMagic: () => number;
+  getMagicRes: () => number;
+  getSpeed: () => number;
   getCrit: () => number;
 }
 
-export function InventoryContent({ state, onEquip, onUnequip, onUse, onEquipConsumable, getMaxPieces, getAttack, getDefense, getCrit }: InventoryContentProps) {
+export function InventoryContent({ state, onEquip, onUnequip, onUse, onEquipConsumable, getMaxPieces, getAttack, getDefense, getMagic, getMagicRes, getSpeed, getCrit }: InventoryContentProps) {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
@@ -372,9 +375,12 @@ export function InventoryContent({ state, onEquip, onUnequip, onUse, onEquipCons
 
         {/* Stats Row */}
         <div className="grid grid-cols-3 gap-px bg-border border border-border">
-          <StatItem label="Ataque" value={`+${getAttack()}`} icon={<Sword size={10} />} />
-          <StatItem label="Defensa" value={`+${getDefense()}`} icon={<Shield size={10} />} />
-          <StatItem label="Crítico" value={`${getCrit()}%`} icon={<Zap size={10} />} />
+          <StatItem label="ATK" value={`${getAttack()}`} icon={<Sword size={10} />} />
+          <StatItem label="DEF" value={`${getDefense()}`} icon={<Shield size={10} />} />
+          <StatItem label="MAG" value={`${getMagic()}`} icon={<Flame size={10} />} />
+          <StatItem label="MAG RES" value={`${getMagicRes()}`} icon={<Shield size={10} />} />
+          <StatItem label="SPD" value={`${getSpeed()}`} icon={<Wind size={10} />} />
+          <StatItem label="CRIT" value={`${getCrit()}%`} icon={<Zap size={10} />} />
         </div>
 
         {/* Active Sets */}

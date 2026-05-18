@@ -5,7 +5,7 @@
  */
 
 import {
-  TDB, ENM, SETS, getItemData, rollRarity, scaleStat,
+  TDB, ENM, getItemData, rollRarity, scaleStat,
   RARITY_CONFIG, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex,
   QST, LOC,
 } from '../data';
@@ -161,18 +161,7 @@ export function getAttack(state: GameState): number {
   (Object.values(state.equipment) as (EquipSlot | null)[]).forEach(eq => {
     if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.attack || 0;
   });
-
-  // Set Bonuses
-  const sets = getActiveSets(state.equipment);
-  Object.entries(sets).forEach(([setName, count]) => {
-    const setData = (SETS as any)[setName];
-    if (setData) {
-      if (count >= 2) bonus += setData.bonus2.stats?.attack || 0;
-      if (count >= 4) bonus += setData.bonus4.stats?.attack || 0;
-    }
-  });
-
-  return 8 + bonus;
+  return 3 + bonus;
 }
 
 export function getDefense(state: GameState): number {
@@ -180,18 +169,23 @@ export function getDefense(state: GameState): number {
   (Object.values(state.equipment) as (EquipSlot | null)[]).forEach(eq => {
     if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.defense || 0;
   });
+  return 3 + bonus;
+}
 
-  // Set Bonuses
-  const sets = getActiveSets(state.equipment);
-  Object.entries(sets).forEach(([setName, count]) => {
-    const setData = (SETS as any)[setName];
-    if (setData) {
-      if (count >= 2) bonus += setData.bonus2.stats?.defense || 0;
-      if (count >= 4) bonus += setData.bonus4.stats?.defense || 0;
-    }
+export function getMagic(state: GameState): number {
+  let bonus = 0;
+  (Object.values(state.equipment) as (EquipSlot | null)[]).forEach(eq => {
+    if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magic || 0;
   });
+  return 3 + bonus;
+}
 
-  return 2 + bonus;
+export function getMagicRes(state: GameState): number {
+  let bonus = 0;
+  (Object.values(state.equipment) as (EquipSlot | null)[]).forEach(eq => {
+    if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magicRes || 0;
+  });
+  return 3 + bonus;
 }
 
 export function getCrit(state: GameState): number {
@@ -199,17 +193,6 @@ export function getCrit(state: GameState): number {
   (Object.values(state.equipment) as (EquipSlot | null)[]).forEach(eq => {
     if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.crit || 0;
   });
-
-  // Set Bonuses
-  const sets = getActiveSets(state.equipment);
-  Object.entries(sets).forEach(([setName, count]) => {
-    const setData = (SETS as any)[setName];
-    if (setData) {
-      if (count >= 2) bonus += setData.bonus2.stats?.crit || 0;
-      if (count >= 4) bonus += setData.bonus4.stats?.crit || 0;
-    }
-  });
-
   return state.resources.crit + bonus;
 }
 
@@ -218,17 +201,7 @@ export function getSpeed(state: GameState): number {
   (Object.values(state.equipment) as (EquipSlot | null)[]).forEach(eq => {
     if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.speed || 0;
   });
-
-  const sets = getActiveSets(state.equipment);
-  Object.entries(sets).forEach(([setName, count]) => {
-    const setData = (SETS as any)[setName];
-    if (setData) {
-      if (count >= 2) bonus += setData.bonus2.stats?.speed || 0;
-      if (count >= 4) bonus += setData.bonus4.stats?.speed || 0;
-    }
-  });
-
-  return 8 + bonus;
+  return 3 + bonus;
 }
 
 export function getEquippedSkills(equipment: Record<string, EquipSlot | null>): string[] {
