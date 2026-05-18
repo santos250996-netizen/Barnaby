@@ -328,6 +328,53 @@ export default function App() {
     return counts;
   }, [gameState.equipment]);
 
+  const getGearScore = useCallback(() => {
+    let totalStats = 0;
+    let rarityWeightSum = 0;
+    let equippedCount = 0;
+
+    (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
+      if (eq && getItemData(eq.id)) {
+        const itemData = getItemData(eq.id);
+        const stats = itemData.stats || {};
+        const rarityMult = RARITY_CONFIG[eq.rarity].multiplier;
+        // Sum all weighted stats for this piece
+        const pieceStats = (stats.attack || 0) + (stats.defense || 0) + (stats.speed || 0) + (stats.crit || 0);
+        totalStats += pieceStats * rarityMult;
+        rarityWeightSum += rarityMult;
+        equippedCount++;
+      }
+    });
+
+    // Add set bonus stats (weighted by average rarity of equipped pieces)
+    const sets = getActiveSets();
+    let setStatBonus = 0;
+    Object.entries(sets).forEach(([setName, count]) => {
+      const setData = (SETS as any)[setName];
+      if (setData) {
+        const avgMult = equippedCount > 0 ? rarityWeightSum / equippedCount : 1;
+        if ((count as number) >= 2) {
+          const b2 = setData.bonus2.stats || {};
+          setStatBonus += ((b2.attack || 0) + (b2.defense || 0) + (b2.speed || 0) + (b2.crit || 0)) * avgMult;
+        }
+        if ((count as number) >= 4) {
+          const b4 = setData.bonus4.stats || {};
+          setStatBonus += ((b4.attack || 0) + (b4.defense || 0) + (b4.speed || 0) + (b4.crit || 0)) * avgMult;
+        }
+      }
+    });
+
+    return Math.floor(totalStats + setStatBonus);
+  }, [gameState.equipment, getActiveSets]);
+
+  const getGearRank = useCallback((gs: number) => {
+    if (gs >= 250) return { label: 'Leyenda', color: '#eab308' };
+    if (gs >= 180) return { label: 'Campeón', color: '#a855f7' };
+    if (gs >= 100) return { label: 'Veterano', color: '#3b82f6' };
+    if (gs >= 40) return { label: 'Aventurero', color: '#22c55e' };
+    return { label: 'Novato', color: '#9ca3af' };
+  }, []);
+
   const getMaxPieces = useCallback(() => {
     let bonus = 0;
     const sets = getActiveSets();
@@ -1879,7 +1926,21 @@ export default function App() {
                         className={`h-full ${gameState.pieces / Math.max(1, getMaxPieces()) < 0.3 ? 'bg-gradient-to-r from-red-700 to-red-500 animate-pulse' : 'bg-gradient-to-r from-red-600 to-red-400'}`} 
                       />
                     </div>
-                    {/* No XP bar — level/XP system removed */}
+                    {/* No XP bar — level/XP system removed, replaced by GearScore */}
+                    {(() => {
+                      const gs = getGearScore();
+                      const rank = getGearRank(gs);
+                      return (
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: rank.color }}>
+                            {rank.label}
+                          </span>
+                          <span className="text-[9px] font-bold font-mono" style={{ color: '#d4943a' }}>
+                            ⚔️{gs}
+                          </span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
                 {/* Compact combat indicator — always visible during combat */}
