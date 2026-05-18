@@ -31,7 +31,7 @@ export interface GameState {
   defeatedBosses: string[];
   activeQuests: any[];
   completedQuests: string[];
-  storyFlags: { nextCrit: boolean; inDungeon: boolean };
+  storyFlags: { nextCrit: boolean; inDungeon: boolean; tutorialComplete: boolean };
   dungeon: {
     rooms: any[];
     currentRoom: number;
@@ -120,7 +120,7 @@ export const INITIAL_STATE: GameState = {
   inventory: [],
   currentLocation: "🏙️ Ciudad", unlockedLocations: ["🏙️ Ciudad", "🌲 Bosque", "Catacumbas", "Paramo", "Cienaga", "Volcan", "Trono"],
   defeatedBosses: [], activeQuests: [], completedQuests: [],
-  storyFlags: { nextCrit: false, inDungeon: false },
+  storyFlags: { nextCrit: false, inDungeon: false, tutorialComplete: false },
   dungeon: null,
   bestiary: {}, questProgress: {},
   consumableSlots: ['potion', null] as [string | null, string | null],

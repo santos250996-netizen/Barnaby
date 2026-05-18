@@ -1,6 +1,68 @@
 import { QuestData } from './types';
 
 export const QST: QuestData[] = [
+    // ═══════════════════════════════════════════════════════════
+    // TUTORIAL — 4 quests obligatorias tipo talk (Morgana)
+    // El player recibe 4 parts comunes de Goblin para poder pelear.
+    // Cada quest se acepta al hablar con Morgana y se entrega al hablar de nuevo.
+    // El jugador NO puede salir de Ciudad ni combatir hasta completar las 4.
+    // ═══════════════════════════════════════════════════════════
+    {
+        id: "tutorial_1_cabeza",
+        name: "💀 El Despertar de Barnaby",
+        giver: "Morgana",
+        location: "🏙️ Ciudad",
+        type: "talk",
+        target: "Morgana",
+        story: true,
+        order: 1,
+        description: "Te has despertado en un callejón oscuro sin piezas, sin memoria... solo huesos. Una bruja llamada Morgana te observa con curiosidad. Acércate a ella, quizás pueda ayudarte.",
+        req: "Habla con Morgana en la Ciudad.",
+        reward: { shards: 10, item: "Cráneo de Goblin" },
+    },
+    {
+        id: "tutorial_2_torso",
+        name: "🫁 Un Torso para Barnaby",
+        giver: "Morgana",
+        location: "🏙️ Ciudad",
+        type: "talk",
+        target: "Morgana",
+        story: true,
+        order: 2,
+        description: "Morgana ha encontrado un torso entre las cosas que los goblins perdieron en su última incursión. No es gran cosa, pero es mejor que caminar solo como cráneo. Ve a buscarla.",
+        req: "Habla con Morgana para recibir el torso.",
+        reward: { shards: 10, item: "Torso de Goblin" },
+        reqQuest: "tutorial_1_cabeza",
+    },
+    {
+        id: "tutorial_3_brazos",
+        name: "💪 Brazos para Sobrevivir",
+        giver: "Morgana",
+        location: "🏙️ Ciudad",
+        type: "talk",
+        target: "Morgana",
+        story: true,
+        order: 3,
+        description: "Sin brazos no puedes defenderte. Morgana tiene un par de brazos de goblin que podrían servirte... si sabes dónde ponerlos. Son pequeños, pero dignos de un hueso como tú.",
+        req: "Habla con Morgana para recibir los brazos.",
+        reward: { shards: 10, item: "Brazos de Goblin" },
+        reqQuest: "tutorial_2_torso",
+    },
+    {
+        id: "tutorial_4_piernas",
+        name: "🦴 El Primer Paso",
+        giver: "Morgana",
+        location: "🏙️ Ciudad",
+        type: "talk",
+        target: "Morgana",
+        story: true,
+        order: 4,
+        description: "Solo falta lo más importante: piernas. Con ellas podrás moverte por el mundo, explorar y luchar. Morgana tiene las últimas piezas que necesitas. El Bosque te espera, Barnaby.",
+        req: "Habla con Morgana para recibir las piernas y completar el tutorial.",
+        reward: { shards: 10, item: "Piernas de Goblin", potions: 2 },
+        reqQuest: "tutorial_3_brazos",
+    },
+
     // === FOREST STORY QUESTS (sequential) ===
     {
         id: "forest_1_limpieza",

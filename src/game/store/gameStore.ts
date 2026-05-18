@@ -574,6 +574,12 @@ export const useGameStore = create<GameStore>()(
           });
         }
 
+        // Migration: existing players (have completed quests) skip tutorial
+        if (merged.storyFlags && !('tutorialComplete' in merged.storyFlags)) {
+          const hasCompleted = Array.isArray(merged.completedQuests) && merged.completedQuests.length > 0;
+          merged.storyFlags.tutorialComplete = hasCompleted;
+        }
+
         // Migration: remove old fields
         delete (merged as any).level;
         delete (merged as any).exp;

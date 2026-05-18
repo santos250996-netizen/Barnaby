@@ -112,7 +112,14 @@ export default function App() {
           inventory: inv,
           resources,
           equipment: eq,
-          storyFlags: { ...INITIAL_STATE.storyFlags, ...(parsed.storyFlags || {}) },
+          storyFlags: {
+            ...INITIAL_STATE.storyFlags,
+            ...(parsed.storyFlags || {}),
+            // Migration: existing players with completed quests skip tutorial
+            tutorialComplete: (parsed.storyFlags as any)?.tutorialComplete ?? (
+              Array.isArray(parsed.completedQuests) && parsed.completedQuests.length > 0
+            ),
+          },
           unlockedLocations,
         };
       }
@@ -294,6 +301,11 @@ export default function App() {
   }, [LORE_DATA, showToast]);
 
   const travelTo = useCallback((loc: string) => {
+    // Block travel during tutorial
+    if (!gameState.storyFlags.tutorialComplete) {
+      showToast('Completa el tutorial con Morgana antes de poder viajar.', 'error');
+      return;
+    }
     const locName = LOC[loc]?.name || loc;
     setTravelTransition(locName);
     setActivePanel(null);
@@ -797,6 +809,11 @@ export default function App() {
   };
 
   const startCombat = (enemyName: string, isBoss = false, overrides: any = null) => {
+    // Block combat during tutorial
+    if (!gameState.storyFlags.tutorialComplete) {
+      showToast('Completa el tutorial con Morgana antes de poder luchar.', 'error');
+      return;
+    }
     // Preload enemy images immediately for instant combat transition
     preloadEnemyImages(enemyName);
 
@@ -1571,6 +1588,10 @@ export default function App() {
   }, [isPlayerTurn, gameState.pieces, gameState.maxPieces, gameState.equipment, enemyHp, getAttack, getCrit, getMaxPieces, getActiveSets, playSound, addLog, triggerFloatingNumber, masterSkillUsed]);
 
   const enterDungeon = () => {
+    if (!gameState.storyFlags.tutorialComplete) {
+      showToast('Completa el tutorial con Morgana antes de entrar a la mazmorra.', 'error');
+      return;
+    }
     const loc = LOC[gameState.currentLocation];
     if (!loc || loc.isTown) return;
     const isForest = gameState.currentLocation === "🌲 Bosque";
@@ -1636,6 +1657,10 @@ export default function App() {
     const quest = QST.find(q => q.id === questId);
     if (!quest) return;
 
+    // Tutorial items are comun rarity, others are normal
+    const isTutorial = questId.startsWith('tutorial_');
+    const itemRarity: any = isTutorial ? 'comun' : 'normal';
+
     setGameState(prev => {
       const active = prev.activeQuests.filter(q => q.id !== questId);
       const completed = [...prev.completedQuests, questId];
@@ -1644,11 +1669,14 @@ export default function App() {
 
       let finalInventory = [...prev.inventory];
       if (quest.reward.item) {
-        finalInventory.push({ id: quest.reward.item, rarity: 'normal', skillRarities: {} });
+        finalInventory.push({ id: quest.reward.item, rarity: itemRarity, skillRarities: {} });
       }
       let newPotions = prev.resources.potions + (quest.reward.potions || 0);
       
       const newPieces = Math.min(prev.maxPieces, prev.pieces + (quest.reward.integrity || 0));
+
+      // Mark tutorial as complete after the last tutorial quest
+      const tutorialDone = isTutorial && questId === 'tutorial_4_piernas';
 
       return {
         ...prev,
@@ -1657,10 +1685,17 @@ export default function App() {
         resources: { ...prev.resources, shards: newShards, potions: newPotions },
         inventory: finalInventory,
         pieces: newPieces,
+        storyFlags: {
+          ...prev.storyFlags,
+          tutorialComplete: prev.storyFlags.tutorialComplete || tutorialDone,
+        },
       };
     });
 
     showToast(`¡Misión Entregada: ${quest.name}!`, "success");
+    if (isTutorial && questId === 'tutorial_4_piernas') {
+      setTimeout(() => showToast('¡Tutorial completado! Ahora puedes explorar el mundo. Equipa tus piezas de Goblin y ve al Bosque.', 'success'), 500);
+    }
     playSound('quest');
   };
 

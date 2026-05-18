@@ -45,6 +45,43 @@ export const NPC_DIALOGS: Record<string, NpcDialogDef> = {
     greeting: 'Barnaby... tus piezas suenan como música de ultratumba. ¿Buscas algo en particular?',
     options: [],
     info: '🔮 Morgana\n\nMorgana ofrece misiones y conoce los secretos de la nigromancia. Completa sus misiones para desbloquear nuevas zonas y obtener recompensas.',
+    conditionalGreeting: [
+      // Tutorial step 4: player has tutorial_4_piernas active (about to complete)
+      {
+        check: (state: any) =>
+          !state.storyFlags?.tutorialComplete &&
+          state.activeQuests?.some((q: any) => q.id === 'tutorial_4_piernas'),
+        text: 'Casi estás completo, Barnaby. Solo faltan las piernas... y el mundo se abrirá ante ti. ¿Estás listo para el último paso?',
+      },
+      // Tutorial step 3: player has tutorial_3_brazos active
+      {
+        check: (state: any) =>
+          !state.storyFlags?.tutorialComplete &&
+          state.activeQuests?.some((q: any) => q.id === 'tutorial_3_brazos'),
+        text: 'Un torso y una cabeza no son suficientes. Sin brazos no puedes sostener un arma ni defenderte. Toma estos brazos de goblin... son pequeños pero astutos.',
+      },
+      // Tutorial step 2: player has tutorial_2_torso active
+      {
+        check: (state: any) =>
+          !state.storyFlags?.tutorialComplete &&
+          state.activeQuests?.some((q: any) => q.id === 'tutorial_2_torso'),
+        text: 'Ya tienes una cabeza, pero necesitas un cuerpo. Este torso de goblin no es mucho, pero es un comienzo. Los goblins lo perdieron en su última incursión.',
+      },
+      // Tutorial step 1: player has tutorial_1_cabeza active
+      {
+        check: (state: any) =>
+          !state.storyFlags?.tutorialComplete &&
+          state.activeQuests?.some((q: any) => q.id === 'tutorial_1_cabeza'),
+        text: '¿Despierto al fin? No te asustes, hueso andante. No recuerdo cómo llegaste aquí, pero puedo ayudarte. Este cráneo de goblin debería servirte.',
+      },
+      // Tutorial start: no tutorial quest accepted yet
+      {
+        check: (state: any) =>
+          !state.storyFlags?.tutorialComplete &&
+          !state.activeQuests?.some((q: any) => q.id?.startsWith('tutorial_')),
+        text: '¿Un esqueleto sin piezas? Eso es nuevo... incluso para mí. Escucha, Barnaby: no puedes ir por ahí solo como esqueleto desnudo. Tengo algunas partes de goblin que podrían servirte. Ven, hablemos.',
+      },
+    ],
   },
   Mercader: {
     greeting: 'Huesos, cristales, fragmentos... todo tiene un precio aquí.',

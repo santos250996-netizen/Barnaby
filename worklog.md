@@ -150,3 +150,46 @@ Stage Summary:
 - Part modals now show rarity-scaled stats (e.g., comun Cráneo de Trasgo shows ~20 effective points instead of 30)
 - Accumulated stats (ATK/DEF/MAG/MAG_RES/SPD/CRIT) in inventory and header now reflect rarity scaling
 - Gearscore thresholds adjusted for new stat ranges
+
+---
+Task ID: 1
+Agent: Main Agent
+Task: Separate drop part/skill rarity from combat rarity
+
+Work Log:
+- Updated useCombatActions.ts startCombatWithEnemy: split single combatRarity into 3 independent rolls
+  - combatRarity: for enemy stats + skills during combat
+  - dropPartRarity: independent roll for the dropped part's rarity
+  - dropSkillRarity: independent roll for the dropped part's skill rarity
+- Updated combat.ts startCombat with same separation
+- Updated BarnabyGame.tsx startCombat with same separation
+- Verified endCombat uses preRolledDrop.itemRarity and preRolledDrop.skillRarities (already correct)
+
+Stage Summary:
+- 3 independent rarity rolls per combat: combat stats, drop part, drop skills
+- Can now get legendary part with common skill, etc.
+- Files: useCombatActions.ts, combat.ts, BarnabyGame.tsx
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Create tutorial quest system — 4 delivery quests for Goblin set
+
+Work Log:
+- Added 4 tutorial quests to QST[] in quests.ts (tutorial_1_cabeza through tutorial_4_piernas)
+  - All type: "talk", giver: "Morgana", chained via reqQuest
+  - Rewards: Cráneo/Torso/Brazos/Piernas de Goblin (comun) + 10 shards each + 2 potions on last
+- Added tutorialComplete flag to storyFlags in types.ts and INITIAL_STATE
+- Added migration in gameStore.ts merge: existing players with completedQuests auto-skip tutorial
+- Added migration in BarnabyGame.tsx localStorage loading: same logic
+- Blocked travel (travelTo), combat (startCombat), and dungeon (enterDungeon) when tutorialComplete is false
+- Added 5 conditional greetings for Morgana in useNPC.ts (one per tutorial step + initial)
+- Updated deliverQuest in BarnabyGame.tsx: tutorial items give comun rarity, marks tutorialComplete on last quest
+- Added success toast when tutorial completes
+
+Stage Summary:
+- New players start in Ciudad, must talk to Morgana 4 times to receive Goblin set
+- Each talk: accept quest → talk again → deliver quest → receive part
+- Cannot travel, fight, or enter dungeon until tutorial_4_piernas completed
+- Existing players (with any completed quests) auto-skip tutorial via migration
+- Files: quests.ts, types.ts, gameStore.ts, BarnabyGame.tsx, useNPC.ts
