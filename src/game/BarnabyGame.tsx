@@ -347,9 +347,9 @@ export default function App() {
   }, [gameState.equipment]);
 
   const getGearRank = useCallback((gs: number) => {
-    if (gs >= 110) return { label: 'Leyenda', color: '#eab308' };
-    if (gs >= 95) return { label: 'Campeón', color: '#a855f7' };
-    if (gs >= 80) return { label: 'Veterano', color: '#3b82f6' };
+    if (gs >= 160) return { label: 'Leyenda', color: '#eab308' };
+    if (gs >= 120) return { label: 'Campeón', color: '#a855f7' };
+    if (gs >= 90) return { label: 'Veterano', color: '#3b82f6' };
     if (gs >= 60) return { label: 'Aventurero', color: '#22c55e' };
     return { label: 'Novato', color: '#9ca3af' };
   }, []);

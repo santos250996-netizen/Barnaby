@@ -18,14 +18,14 @@ export const RARITY_CONFIG: Record<Rarity, {
 };
 
 // SKILL RARITY is INDEPENDENT from item rarity
-// RARITY_STAT_FACTOR: determines what % of the 30-point budget each rarity realizes
-// comun pieces get ~65% of budget, legendary pieces get 100%
+// RARITY_STAT_FACTOR: scales the 30-point base budget by rarity
+// raro = baseline (1.0x), comun diminishes, legendary amplifies
 export const RARITY_STAT_FACTOR: Record<Rarity, number> = {
-  comun: 0.65,
-  normal: 0.78,
-  raro: 0.87,
-  epico: 0.94,
-  legendario: 1.0,
+  comun: 0.5,
+  normal: 0.75,
+  raro: 1.0,
+  epico: 1.25,
+  legendario: 1.5,
 };
 
 export const SKILL_RARITY_MULTIPLIER: Record<Rarity, number> = {
@@ -69,8 +69,8 @@ export function rollRarity(zoneMaxRarityIdx: number, _enemyLevel?: number): Rari
   return 'normal';
 }
 
-// Scale item stats by rarity — uses RARITY_STAT_FACTOR for budget realization
-// This makes common pieces weaker and legendary pieces reach full 30pt budget
+// Scale item stats by rarity — uses RARITY_STAT_FACTOR
+// comun = 50% of base, legendario = 150% of base
 export function scaleStat(baseValue: number, _listedRarity: Rarity, dropRarity: Rarity): number {
   return Math.max(1, Math.floor(baseValue * RARITY_STAT_FACTOR[dropRarity]));
 }
