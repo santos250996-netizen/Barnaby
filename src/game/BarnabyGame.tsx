@@ -2034,6 +2034,39 @@ export default function App() {
                       />
                     </div>
 
+                    {/* Player Status Effects — Below enemy card, above HP bar */}
+                    {isCombat && (
+                      <div className="px-1 sm:px-2 pt-1 pb-0.5">
+                        <div className="flex flex-wrap gap-1 min-h-[18px]">
+                          {combatFx.playerShield && (
+                            <span className="text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 shadow-[0_0_6px_rgba(6,182,212,0.3)]">
+                              🛡️ escudo
+                            </span>
+                          )}
+                          {combatFx.playerBleed && combatFx.playerBleedTurns > 0 && (
+                            <span className="text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded bg-red-900/60 border border-red-500/40 text-red-300 shadow-[0_0_6px_rgba(239,68,68,0.3)]">
+                              🩸 sangrado {combatFx.playerBleedTurns}t
+                            </span>
+                          )}
+                          {combatFx.playerPoison && combatFx.playerPoisonTurns > 0 && (
+                            <span className="text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded bg-green-900/60 border border-green-500/40 text-green-300 shadow-[0_0_6px_rgba(34,197,94,0.3)]">
+                              ☠️ veneno {combatFx.playerPoisonTurns}t
+                            </span>
+                          )}
+                          {combatFx.playerDebuff && combatFx.playerDebuffTurns > 0 && (
+                            <span className="text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded bg-purple-900/60 border border-purple-500/40 text-purple-300 shadow-[0_0_6px_rgba(168,85,247,0.3)]">
+                              💨 debuff {combatFx.playerDebuffTurns}t
+                            </span>
+                          )}
+                          {combatFx.playerFrozen && (
+                            <span className="text-[7px] sm:text-[8px] font-black px-1.5 py-0.5 rounded bg-blue-900/60 border border-blue-500/40 text-blue-300 shadow-[0_0_6px_rgba(59,130,246,0.3)] animate-pulse">
+                              ❄️ STUN
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Player HP Bar - Under enemy card */}
                     <div className="px-1 sm:px-2 py-2">
                       <div className="flex items-center gap-2 relative">

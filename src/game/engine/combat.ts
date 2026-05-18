@@ -397,8 +397,16 @@ export function startCombat(args: {
   // Bestiary scaling: +10% per kill, cumulative, capped at +100% (10 kills)
   const kills = gameState.bestiary?.[enemyName]?.kills || 0;
   const bestMult = 1 + Math.min(kills * 0.1, 1.0);
-  enemyData.hp = Math.floor(enemyData.hp * bestMult);
-  enemyData.attack = Math.floor(enemyData.attack * bestMult);
+
+  // ═══ COMBAT BALANCE SCALING ═══
+  // These multipliers ensure fights last 5-8 turns, making buffs/debuffs/strategy matter
+  const BALANCE_HP_MULT = enemyData.isBoss ? 2.0 : 2.2;
+  const BALANCE_ATK_MULT = enemyData.isBoss ? 1.4 : 1.5;
+  const BALANCE_DEF_MULT = 1.3;
+
+  enemyData.hp = Math.floor(enemyData.hp * bestMult * BALANCE_HP_MULT);
+  enemyData.attack = Math.floor(enemyData.attack * bestMult * BALANCE_ATK_MULT);
+  enemyData.defense = Math.floor((enemyData.defense || 0) * bestMult * BALANCE_DEF_MULT);
 
   // ═══ PRE-ROLL DROP ═══
   const zoneName = gameState.currentLocation;
@@ -537,9 +545,24 @@ export function executePlayerAction(args: {
 
   let dmg = tech.damage + (isPhys ? getAttack(gameState) : Math.floor(getAttack(gameState) * 0.3));
 
-  // Player debuff from enemy (e.g. Golpe Bajo)
+  // ═══ ENEMY DEFENSE REDUCTION ═══
+  // Enemy defense now reduces incoming player damage
+  const enemyDef = combatState.enemy?.defense || 0;
+  if (enemyDef > 0) {
+    const defReduction = Math.floor(enemyDef * 0.6);
+    if (defReduction > 0) {
+      dmg = Math.max(1, dmg - defReduction);
+    }
+  }
+
+  // Player debuff from enemy (e.g. Golpe Bajo) — 50% reduction (stronger, more punishing)
   if (combatState.combatFx.playerDebuff && combatState.combatFx.playerDebuffTurns > 0) {
-    dmg = Math.floor(dmg * 0.7);
+    dmg = Math.floor(dmg * 0.5);
+  }
+
+  // Enemy is debuffed → player deals 30% MORE damage (strategic value for debuff skills)
+  if (combatState.combatFx.enemyDebuff && combatState.combatFx.enemyDebuffTurns > 0) {
+    dmg = Math.floor(dmg * 1.3);
   }
 
   // Enemy shield reduces player damage (e.g. Piel Brutal, Retirada Táctica)
@@ -549,9 +572,9 @@ export function executePlayerAction(args: {
     log.push({ text: `¡Escudo enemigo! Daño reducido a ${dmg}`, type: 'effect' });
   }
 
-  // Fury effect (if active or from tech)
+  // Fury effect (if active or from tech) — +60% damage (stronger buff to reward strategy)
   if (tech.fury) {
-    dmg = Math.floor(dmg * 1.5);
+    dmg = Math.floor(dmg * 1.6);
   }
 
   const critChance = getCrit(gameState);
@@ -649,17 +672,17 @@ export function executePlayerAction(args: {
     vfx.push({ type: 'freeze', target: 'enemy' });
   }
 
-  // Bleed
+  // Bleed — 4 turns (longer DOT for strategic value)
   if (tech.bleed) {
     fxUpdates.enemyBleed = tech.bleed;
-    fxUpdates.enemyBleedTurns = 3;
+    fxUpdates.enemyBleedTurns = 4;
     vfx.push({ type: 'bleed-audio', target: 'enemy' });
   }
 
-  // Debuff
+  // Debuff — 3 turns (longer duration for strategic value)
   if (tech.debuff) {
     fxUpdates.enemyDebuff = true;
-    fxUpdates.enemyDebuffTurns = 2;
+    fxUpdates.enemyDebuffTurns = 3;
     vfx.push({ type: 'debuff', target: 'enemy' });
   }
 
@@ -880,7 +903,7 @@ export function executeEnemyTurn(args: {
     // Fury is an EFFECT — not scaled by skill rarity
     if (skillData?.fury) {
       fxUpdates.enemyFury = true;
-      fxUpdates.enemyFuryTurns = 2;
+      fxUpdates.enemyFuryTurns = 3;
       log.push({ text: `${combatState.enemy.name} se fortalece!`, type: 'effect' });
       vfx.push({ type: 'fury', target: 'enemy' });
     }
@@ -903,14 +926,15 @@ export function executeEnemyTurn(args: {
     // Fury is an EFFECT — not scaled by skill rarity
     if (skillData?.fury) {
       fxUpdates.enemyFury = true;
-      fxUpdates.enemyFuryTurns = 2;
+      fxUpdates.enemyFuryTurns = 3;
       log.push({ text: `${combatState.enemy.name} se fortalece!`, type: 'effect' });
       vfx.push({ type: 'fury', target: 'enemy' });
     }
   } else {
     // Attack-type intent — calculate damage with skill modifiers
+    // Enemy debuffed → 50% less damage (stronger debuff effect)
     if (combatState.combatFx.enemyDebuff && combatState.combatFx.enemyDebuffTurns > 0) {
-      dmg = Math.floor(dmg * 0.7);
+      dmg = Math.floor(dmg * 0.5);
     }
 
     // Armor penetration (e.g. Puñalada Trampa)
@@ -952,7 +976,7 @@ export function executeEnemyTurn(args: {
       const scaledBleed = Math.max(1, Math.floor(skillData.bleed * sMult));
       log.push({ text: `¡Sangrado! -${scaledBleed} piezas/turno`, type: 'effect' });
       currentBleed = true;
-      currentBleedTurns = 3;
+      currentBleedTurns = 4;
       currentBleedDmg = scaledBleed;
       vfx.push({ type: 'bleed', target: 'player' });
     }
@@ -1041,10 +1065,10 @@ export function executeEnemyTurn(args: {
   fxUpdates.playerBleedTurns = currentBleedTurns;
   fxUpdates.playerBleedDmg = currentBleedDmg;
 
-  // If enemy skill has debuff, apply player debuff
+  // If enemy skill has debuff, apply player debuff — 3 turns
   if (skillData?.debuff) {
     fxUpdates.playerDebuff = true;
-    fxUpdates.playerDebuffTurns = 2;
+    fxUpdates.playerDebuffTurns = 3;
   }
 
   // If enemy skill has freeze and not resisted, skip player's next turn
