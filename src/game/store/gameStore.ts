@@ -89,6 +89,7 @@ export interface CombatState {
   currentActionSlot: number;        // 0-3 which slot is currently executing
   turnNumber: number;               // for speed tie alternation
   tempBuffs: TempBuffs;             // temporary buffs for this turn only
+  currentActor: 'player' | 'enemy' | null;  // who is currently executing their action
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -166,6 +167,7 @@ export interface GameActions {
   setCurrentActionSlot: (slot: number) => void;
   setTurnNumber: (num: number) => void;
   setTempBuffs: (buffs: TempBuffs) => void;
+  setCurrentActor: (actor: 'player' | 'enemy' | null) => void;
 
   // UI actions
   setActivePanel: (panel: string | null) => void;
@@ -221,6 +223,7 @@ const DEFAULT_COMBAT: CombatState = {
   currentActionSlot: 0,
   turnNumber: 0,
   tempBuffs: { ...DEFAULT_TEMP_BUFFS },
+  currentActor: null,
 };
 
 const DEFAULT_UI: UIState = {
@@ -450,6 +453,7 @@ export const useGameStore = create<GameStore>()(
       setCurrentActionSlot: (slot) => set({ currentActionSlot: slot }),
       setTurnNumber: (num) => set({ turnNumber: num }),
       setTempBuffs: (buffs) => set({ tempBuffs: buffs }),
+      setCurrentActor: (actor) => set({ currentActor: actor }),
 
       // ══════════════════════════════════════════
       // UI Actions

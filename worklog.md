@@ -65,3 +65,23 @@ Stage Summary:
 - Master skill replaces slot 1 when HP ≤ 30%
 - Putrefacción 0 = skip action
 - Death = combat ends immediately
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix intent display (both glow simultaneously) and enemy HP bar visual bug at combat end
+
+Work Log:
+- Analyzed combat execution flow in useCombatActions.ts executeNextAction()
+- Identified that both enemy and player intent circles used the same condition `turnPhase === 'executing' && currentActionSlot === idx` causing both to glow at once
+- Added `currentActor: 'player' | 'enemy' | null` to Zustand store (gameStore.ts)
+- Added `setCurrentActor` action and included in DEFAULT_COMBAT reset
+- Updated executeNextAction in useCombatActions.ts to set `currentActor` before each skill execution and clear it after completion
+- Updated executePlayerSkill and executeEnemySkill to clear currentActor on completion
+- Updated EnemyCard.tsx to accept `currentActor` prop and use it in isExecuting conditions
+- Fixed enemy HP bar "fill up" bug: When endCombat() resets store to 0, the fallback `storeEnemyHp > 0 ? storeEnemyHp : enemyHp` briefly showed the full local HP. Fixed by only using local state fallback when isCombat is still true, and syncing local enemyHp with store during combat.
+
+Stage Summary:
+- Files changed: gameStore.ts, useCombatActions.ts, EnemyCard.tsx, BarnabyGame.tsx
+- Intent circles now glow sequentially (only the currently executing actor's intent glows)
+- Enemy HP bar no longer flashes to 100% at combat end
+- All changes compile cleanly (no new TypeScript errors)

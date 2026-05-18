@@ -47,6 +47,7 @@ interface EnemyCardProps {
   onFlee: () => void;
   onConfirmOrder: () => void;
   playerActionOrder: string[];
+  currentActor: 'player' | 'enemy' | null;
 }
 
 export function EnemyCard({
@@ -68,6 +69,7 @@ export function EnemyCard({
   onFlee,
   onConfirmOrder,
   playerActionOrder,
+  currentActor,
 }: EnemyCardProps) {
   const img = enemy?.name ? ENEMY_IMAGES[enemy.name] : null;
 
@@ -187,7 +189,7 @@ export function EnemyCard({
       {enemyActions.length > 0 ? (
         <div className="flex flex-row gap-1">
           {enemyActions.map((action, idx) => {
-            const isExecuting = turnPhase === 'executing' && currentActionSlot === idx;
+            const isExecuting = turnPhase === 'executing' && currentActionSlot === idx && currentActor === 'enemy';
             const isDone = turnPhase === 'executing' && currentActionSlot > idx;
             const hasMaster = action.isMasterSkill;
             const skillIcon = action.skillData?.icon || null;
@@ -257,7 +259,7 @@ export function EnemyCard({
           {[0, 1, 2, 3].map(idx => {
             const skillId = playerActionOrder[idx];
             const tech = skillId && skillId !== '' ? (TDB as Record<string, Technique>)[skillId] : null;
-            const isExecuting = turnPhase === 'executing' && currentActionSlot === idx;
+            const isExecuting = turnPhase === 'executing' && currentActionSlot === idx && currentActor === 'player';
             const isDone = turnPhase === 'executing' && currentActionSlot > idx;
             const isEmpty = !tech;
             const skillIcon = tech?.icon || null;
@@ -277,7 +279,7 @@ export function EnemyCard({
 
             return (
               <div
-n                key={idx}
+                key={idx}
                 className={`flex flex-col items-center transition-all duration-300 ${
                   isDone ? 'opacity-25 scale-90' : ''
                 }`}

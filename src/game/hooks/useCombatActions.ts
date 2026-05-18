@@ -191,6 +191,7 @@ export function useCombatActions() {
   const setCurrentActionSlot = useGameStore(s => s.setCurrentActionSlot);
   const setTurnNumber = useGameStore(s => s.setTurnNumber);
   const setTempBuffs = useGameStore(s => s.setTempBuffs);
+  const setCurrentActor = useGameStore(s => s.setCurrentActor);
 
   const playerStunCountRef = useRef(0);
   const executionTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -445,8 +446,9 @@ export function useCombatActions() {
       triggerCombatVfx('death', 'enemy');
     }
 
+    setCurrentActor(null);
     onComplete();
-  }, [store, addToast, setGameState, addCombatLog, setEnemyHp, updateCombatFx, setTempBuffs, triggerCombatVfx, triggerFloatingNumber, triggerShake, triggerFlash]);
+  }, [store, addToast, setGameState, addCombatLog, setEnemyHp, updateCombatFx, setTempBuffs, setCurrentActor, triggerCombatVfx, triggerFloatingNumber, triggerShake, triggerFlash]);
 
   // ═══════════════════════════════════════════════════════════════
   // executeEnemySkill — execute a single enemy skill action
@@ -583,8 +585,9 @@ export function useCombatActions() {
     // Reset player shield after enemy attacks
     updateCombatFx({ playerShield: false, playerGuard: false });
 
+    setCurrentActor(null);
     onComplete();
-  }, [store, addCombatLog, setEnemyHp, setGameState, updateCombatFx, setMasterSkillUsed, triggerCombatVfx, triggerFloatingNumber, triggerShake, triggerFlash]);
+  }, [store, addCombatLog, setEnemyHp, setGameState, updateCombatFx, setMasterSkillUsed, setCurrentActor, triggerCombatVfx, triggerFloatingNumber, triggerShake, triggerFlash]);
 
   // ═══════════════════════════════════════════════════════════════
   // endTurn — end of a turn
@@ -730,6 +733,7 @@ export function useCombatActions() {
     // Execute first actor
     const executeFirst = () => {
       if (playerGoesFirst && playerCanAct) {
+        setCurrentActor('player');
         executePlayerSkillRef.current(playerSkillId, playSound, () => {
           const s2 = store.getState();
           if (s2.enemyHp <= 0 || s2.pieces <= 0) {
@@ -739,6 +743,7 @@ export function useCombatActions() {
           setTimeout(() => executeSecond(), 500);
         });
       } else if (enemyIntent) {
+        setCurrentActor('enemy');
         executeEnemySkillRef.current(enemyIntent, playSound, () => {
           const s2 = store.getState();
           if (s2.enemyHp <= 0 || s2.pieces <= 0) {
@@ -754,6 +759,7 @@ export function useCombatActions() {
     
     const executeSecond = () => {
       if (!playerGoesFirst && playerCanAct) {
+        setCurrentActor('player');
         executePlayerSkillRef.current(playerSkillId, playSound, () => {
           const s2 = store.getState();
           if (s2.enemyHp <= 0 || s2.pieces <= 0) {
@@ -763,6 +769,7 @@ export function useCombatActions() {
           advanceSlot(playSound);
         });
       } else if (playerGoesFirst && enemyIntent) {
+        setCurrentActor('enemy');
         executeEnemySkillRef.current(enemyIntent, playSound, () => {
           const s2 = store.getState();
           if (s2.enemyHp <= 0 || s2.pieces <= 0) {

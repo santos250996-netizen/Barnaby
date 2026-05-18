@@ -176,6 +176,7 @@ export default function App() {
   const storeEnemyHp = useGameStore(s => s.enemyHp);
   const storeEnemyMaxHp = useGameStore(s => s.enemyMaxHp);
   const storePieces = useGameStore(s => s.pieces);
+  const storeCurrentActor = useGameStore(s => s.currentActor);
 
   // Sync local isCombat with Zustand store — the 4-action system ends combat via store.endCombat()
   React.useEffect(() => {
@@ -192,6 +193,14 @@ export default function App() {
       setGameState(prev => ({ ...prev, pieces: storePieces }));
     }
   }, [isCombat, storePieces]);
+
+  // During combat, sync local enemyHp with store so HP bar stays consistent
+  React.useEffect(() => {
+    if (isCombat && storeEnemyHp > 0) {
+      setEnemyHp(storeEnemyHp);
+      setEnemyMaxHp(storeEnemyMaxHp);
+    }
+  }, [isCombat, storeEnemyHp, storeEnemyMaxHp]);
 
   // Refs for async callbacks (setTimeout) to avoid stale closures
   const enemyTurnCountRef = useRef(0);
@@ -1857,8 +1866,8 @@ export default function App() {
                     <div className="flex-1 relative overflow-hidden" style={{ minHeight: '300px' }}>
                       <EnemyCard
                         enemy={enemy}
-                        enemyHp={storeEnemyHp > 0 ? storeEnemyHp : enemyHp}
-                        enemyMaxHp={storeEnemyMaxHp > 0 ? storeEnemyMaxHp : enemyMaxHp}
+                        enemyHp={storeEnemyHp > 0 ? storeEnemyHp : (isCombat ? enemyHp : 0)}
+                        enemyMaxHp={storeEnemyMaxHp > 0 ? storeEnemyMaxHp : (isCombat ? enemyMaxHp : 1)}
                         enemyActions={storeEnemyActions || []}
                         turnPhase={storeTurnPhase || 'planning'}
                         currentActionSlot={storeCurrentActionSlot || 0}
@@ -1874,6 +1883,7 @@ export default function App() {
                         onFlee={() => endCombat(false)}
                         onConfirmOrder={() => combatActions.confirmPlayerOrder(playSound)}
                         playerActionOrder={storePlayerActionOrder || ['', '', '', '']}
+                        currentActor={storeCurrentActor}
                       />
                     </div>
 
