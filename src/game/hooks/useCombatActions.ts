@@ -1011,7 +1011,7 @@ export function useCombatActions() {
           return {
             ...prev,
             resources: { ...prev.resources, shards: prev.resources.shards + reward.shards },
-            maxPieces: prev.maxPieces, pieces: prev.pieces,
+            maxPieces: prev.maxPieces, pieces: prev.maxPieces,
             wins: prev.wins + 1, inventory: finalInv,
             bestiary: newBestiary, questProgress: newQuestProgress,
             defeatedBosses: enemy.isBoss ? Array.from(new Set([...prev.defeatedBosses, prev.currentLocation, enemy.name])) : prev.defeatedBosses,

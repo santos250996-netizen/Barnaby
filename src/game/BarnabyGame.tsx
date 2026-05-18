@@ -133,7 +133,7 @@ export default function App() {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [floatingNumbers, setFloatingNumbers] = useState<FloatingNumber[]>([]);
   const [isCombat, setIsCombat] = useState(false);
-  const [modal, setModal] = useState<{ title: string; msg: string; onConfirm: () => void } | null>(null);
+  const [modal, setModal] = useState<{ title: string; msg: string; onConfirm: () => void; onCancel?: () => void; confirmLabel?: string; cancelLabel?: string } | null>(null);
   const [screenShake, setScreenShake] = useState(false);
   const [flash, setFlash] = useState<'damage' | 'crit' | null>(null);
   const [npcDialog, setNpcDialog] = useState<{name: string, text: string, options: any[], info?: string} | null>(null);
@@ -530,17 +530,46 @@ export default function App() {
   useEffect(() => {
     if (gameState.pieces <= 0 && !showIntro && !modal) {
       playSound('death');
+      const shards = gameState.resources.shards;
+      const canPay = shards >= 100;
+
       setModal({
         title: "💀 Barnaby se ha desmoronado",
-        msg: "Tus huesos no han podido aguantar más el castigo. Has perdido todas tus piezas...",
+        msg: canPay
+          ? `Tus huesos se han desparramado por el suelo. Un nigromante se ofrece a recomponerte por 100💎.\n\nSi no pagas, perderás TODAS tus parts equipadas.`
+          : `Tus huesos se han desparramado por el suelo... No tienes suficientes fragmentos (100💎) para recomponerte.\n\nPerderás TODAS tus parts equipadas.`,
+        confirmLabel: canPay ? `💎 Pagar 100 fragmentos` : "💀 Continuar sin parts",
+        cancelLabel: canPay ? "💀 Perder parts" : undefined,
         onConfirm: () => {
-          localStorage.removeItem('barnaby_save');
-          location.reload();
-        }
+          setGameState(prev => {
+            const finalResources = { ...prev.resources, shards: prev.resources.shards - 100 };
+            return {
+              ...prev,
+              pieces: prev.maxPieces,
+              currentLocation: "🏙️ Ciudad",
+              resources: finalResources,
+              storyFlags: { ...prev.storyFlags, inDungeon: false },
+              dungeon: null,
+            };
+          });
+          showToast(canPay ? "Recompuesto por 100💎" : "Has perdido todas tus parts...", canPay ? 'info' : 'error');
+        },
+        onCancel: () => {
+          // Player chose to lose parts — keep shards, lose all equipment
+          setGameState(prev => ({
+            ...prev,
+            pieces: prev.maxPieces,
+            currentLocation: "🏙️ Ciudad",
+            resources: { ...prev.resources },
+            equipment: { head: null, torso: null, arms: null, legs: null },
+            storyFlags: { ...prev.storyFlags, inDungeon: false },
+            dungeon: null,
+          }));
+          showToast("Has perdido todas tus parts...", 'error');
+        },
       });
-      playSound('hit');
     }
-  }, [gameState.pieces, showIntro, modal, playSound]);
+  }, [gameState.pieces, showIntro, modal, playSound, gameState.resources.shards, showToast]);
 
   useEffect(() => {
     if (storyWindowRef.current) {
@@ -2424,12 +2453,22 @@ export default function App() {
               </div>
               <h2 className="text-3xl font-display font-black text-accent mt-6 mb-6 uppercase tracking-tighter shadow-text">{modal.title}</h2>
               <p className="text-text-secondary text-sm mb-10 leading-[1.8] italic font-mono px-4">{modal.msg}</p>
-              <button 
-                onClick={modal.onConfirm}
-                className="w-full py-5 bg-accent text-bg-deep font-black text-xl uppercase tracking-[0.2em] hover:brightness-110 active:scale-95 transition-all shadow-glow"
-              >
-                Aceptar
-              </button>
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={modal.onConfirm}
+                  className="w-full py-5 bg-accent text-bg-deep font-black text-xl uppercase tracking-[0.2em] hover:brightness-110 active:scale-95 transition-all shadow-glow"
+                >
+                  {modal.confirmLabel || 'Aceptar'}
+                </button>
+                {modal.onCancel && (
+                  <button 
+                    onClick={modal.onCancel}
+                    className="w-full py-4 border-2 border-red-800/60 text-red-400 font-black text-sm uppercase tracking-[0.2em] hover:bg-red-900/30 active:scale-95 transition-all"
+                  >
+                    {modal.cancelLabel || 'Cancelar'}
+                  </button>
+                )}
+              </div>
             </motion.div>
           </div>
         )}
