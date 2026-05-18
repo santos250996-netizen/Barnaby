@@ -85,3 +85,23 @@ Stage Summary:
 - Intent circles now glow sequentially (only the currently executing actor's intent glows)
 - Enemy HP bar no longer flashes to 100% at combat end
 - All changes compile cleanly (no new TypeScript errors)
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix enemy rewards not being given on death
+
+Work Log:
+- Investigated dual-state architecture: local useState<GameState> in BarnabyGame.tsx + Zustand store
+- Found root cause: useCombatActions.endCombat() writes rewards (shards, inventory, wins, bestiary, quest progress) to Zustand store
+- But UI reads from local gameState which never syncs these fields from Zustand
+- Persistence effect (line 474) pushes local gameState → Zustand on any gameState change, overwriting rewards
+- Also found toast system duplication: combat writes toasts to Zustand, UI renders from local state
+- Added Zustand selectors for reward fields (storeResources, storeInventory, storeWins, etc.)
+- Modified storeIsCombat sync effect to pull ALL game state from Zustand to local when combat ends
+- Added toast sync effect to bridge Zustand toasts to local toasts
+
+Stage Summary:
+- Fixed reward sync: when storeIsCombat goes false, local gameState is updated with all Zustand reward fields
+- Fixed toast visibility: Zustand toasts now sync to local toasts for UI display
+- No new TypeScript errors introduced
+- Key files modified: src/game/BarnabyGame.tsx

@@ -177,22 +177,67 @@ export default function App() {
   const storeEnemyMaxHp = useGameStore(s => s.enemyMaxHp);
   const storePieces = useGameStore(s => s.pieces);
   const storeCurrentActor = useGameStore(s => s.currentActor);
+  // Zustand selectors for reward fields (written by useCombatActions.endCombat)
+  const storeResources = useGameStore(s => s.resources);
+  const storeInventory = useGameStore(s => s.inventory);
+  const storeWins = useGameStore(s => s.wins);
+  const storeBestiary = useGameStore(s => s.bestiary);
+  const storeQuestProgress = useGameStore(s => s.questProgress);
+  const storeDefeatedBosses = useGameStore(s => s.defeatedBosses);
+  const storeMaxPieces = useGameStore(s => s.maxPieces);
+  const storeToasts = useGameStore(s => s.toasts);
 
   // Sync local isCombat with Zustand store — the 4-action system ends combat via store.endCombat()
   React.useEffect(() => {
     if (!storeIsCombat && isCombat) {
+      // Combat just ended in the store — sync ALL reward state from Zustand to local
+      // This is critical because useCombatActions.endCombat() writes rewards to Zustand,
+      // but the UI reads from local gameState. Without this sync, rewards are lost.
+      const s = useGameStore.getState();
+      setGameState(prev => ({
+        ...prev,
+        resources: s.resources,
+        inventory: s.inventory,
+        wins: s.wins,
+        bestiary: s.bestiary || {},
+        questProgress: s.questProgress || {},
+        defeatedBosses: s.defeatedBosses || [],
+        pieces: s.pieces,
+        maxPieces: s.maxPieces,
+        currentLocation: s.currentLocation,
+        unlockedLocations: s.unlockedLocations,
+        activeQuests: s.activeQuests,
+        completedQuests: s.completedQuests,
+        storyFlags: s.storyFlags,
+        dungeon: s.dungeon,
+        consumableSlots: s.consumableSlots,
+        unlockedLore: s.unlockedLore,
+      }));
       setIsCombat(false);
       setCombatMenu('main');
       setEnemy(null);
     }
   }, [storeIsCombat]);
 
+  // Sync Zustand toasts to local toasts (combat system writes to Zustand, UI reads local)
+  React.useEffect(() => {
+    if (storeToasts.length > 0) {
+      setToasts(prev => {
+        const existingIds = new Set(prev.map(t => t.id));
+        const newToasts = storeToasts.filter(t => !existingIds.has(t.id));
+        if (newToasts.length === 0) return prev;
+        const merged = [...prev, ...newToasts];
+        return merged;
+      });
+    }
+  }, [storeToasts]);
+
   // During combat, sync gameState.pieces with store (enemy attacks update store directly)
   React.useEffect(() => {
     if (isCombat && storePieces !== undefined && storePieces !== gameState.pieces) {
       setGameState(prev => ({ ...prev, pieces: storePieces }));
     }
-  }, [isCombat, storePieces]);
+  }, [isCombat, storePieces, gameState.pieces]);
 
   // During combat, sync local enemyHp with store so HP bar stays consistent
   React.useEffect(() => {
