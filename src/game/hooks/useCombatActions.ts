@@ -254,12 +254,13 @@ export function useCombatActions() {
     setTimeout(() => setActiveCombatVfx(null), 1000);
   }, [setActiveCombatVfx]);
 
-  const triggerFloatingNumber = useCallback((val: string, type: 'damage' | 'heal' | 'crit' | 'shield') => {
+  const triggerFloatingNumber = useCallback((val: string, type: 'damage' | 'heal' | 'crit' | 'shield' | 'buff' | 'debuff' | 'dot', target: 'player' | 'enemy' = 'enemy') => {
     const id = Date.now() + Math.random();
-    const x = 30 + Math.random() * 40;
-    const y = 20 + Math.random() * 30;
-    addFloatingNumber({ id, val, type, x, y });
-    setTimeout(() => removeFloatingNumber(id), 1000);
+    // Position: enemy = top half center, player = bottom center
+    const x = target === 'enemy' ? 40 + Math.random() * 20 : 35 + Math.random() * 30;
+    const y = target === 'enemy' ? 15 + Math.random() * 15 : 70 + Math.random() * 10;
+    addFloatingNumber({ id, val, type, target, x, y });
+    setTimeout(() => removeFloatingNumber(id), 2000);
   }, [addFloatingNumber, removeFloatingNumber]);
 
   const triggerShake = useCallback(() => {
@@ -422,12 +423,12 @@ export function useCombatActions() {
     const isCrit = Math.random() * 100 < (crit + tempBuffs.playerCrit) || state.storyFlags.nextCrit;
     if (isCrit) {
       dmg = Math.floor(dmg * 1.5);
-      triggerFloatingNumber(`-${dmg}`, 'crit');
+      triggerFloatingNumber(`-${dmg}`, 'crit', 'enemy');
       addCombatLog({ text: `${tech.name}: ${dmg} CRIT!`, type: 'player' });
       triggerFlash('crit'); triggerShake(); triggerCombatVfx('crit', 'enemy');
       playSound('crit');
     } else {
-      triggerFloatingNumber(`-${dmg}`, 'damage');
+      triggerFloatingNumber(`-${dmg}`, 'damage', 'enemy');
       addCombatLog({ text: `${tech.name}: ${dmg}`, type: 'player' });
     }
 
@@ -446,12 +447,14 @@ export function useCombatActions() {
     if (mutation.selfDmgPercent > 0) {
       const selfDmg = calcSelfDamage(mutation.selfDmgPercent, maxP);
       setGameState(prev => ({ ...prev, pieces: Math.max(1, prev.pieces - selfDmg) }));
+      triggerFloatingNumber(`-${selfDmg}`, 'dot', 'player');
       addCombatLog({ text: `☠️ Putrefacción (${pState.name}): -${selfDmg} piezas`, type: 'effect' });
     }
 
     // ── PUTREFACCIÓN: Self-bleed ──
     if (mutation.selfBleed && mutation.selfBleed > 0) {
       updateCombatFx({ playerBleed: true, playerBleedTurns: 999, playerBleedDmg: mutation.selfBleed });
+      triggerFloatingNumber(`🩸 -${mutation.selfBleed}/t`, 'debuff', 'player');
       addCombatLog({ text: `☠️ Auto-sangrado: -${mutation.selfBleed} piezas/turno`, type: 'effect' });
     }
 
@@ -460,6 +463,7 @@ export function useCombatActions() {
       const currentBleed = combatFx.enemyBleed || 0;
       const newBleed = Math.max(currentBleed, mutation.bonusBleed);
       updateCombatFx({ enemyBleed: newBleed, enemyBleedTurns: 999 });
+      triggerFloatingNumber(`🩸 -${newBleed}/t`, 'dot', 'enemy');
       addCombatLog({ text: `🩸 Sangrado putrefacto: -${newBleed}/turno`, type: 'effect' });
       triggerCombatVfx('bleed', 'enemy');
       playSound('bleed');
@@ -468,6 +472,7 @@ export function useCombatActions() {
     // ── PUTREFACCIÓN: Bonus debuff al enemigo ──
     if (mutation.bonusDebuff) {
       updateCombatFx({ enemyDebuff: true, enemyDebuffTurns: 2 });
+      triggerFloatingNumber('💨 -30%', 'debuff', 'enemy');
       addCombatLog({ text: `💨 Desconcertado por putrefacción`, type: 'effect' });
       triggerCombatVfx('debuff', 'enemy');
       playSound('debuff');
@@ -487,7 +492,7 @@ export function useCombatActions() {
     if (mutation.bonusHeal && mutation.bonusHeal > 0) {
       const healAmt = mutation.bonusHeal;
       setGameState(prev => ({ ...prev, pieces: Math.min(maxP, prev.pieces + healAmt) }));
-      triggerFloatingNumber(`+${healAmt}`, 'heal');
+      triggerFloatingNumber(`+${healAmt}`, 'heal', 'player');
       addCombatLog({ text: `💚 Regeneración pútrida: +${healAmt} piezas`, type: 'effect' });
       triggerCombatVfx('heal', 'player');
     }
@@ -496,6 +501,7 @@ export function useCombatActions() {
     if (mutation.infectEnemy) {
       const newEnemyPutref = (state.enemyPutrefaccion || 0) + 1;
       setEnemyPutrefaccion(newEnemyPutref);
+      triggerFloatingNumber(`🦠 INF ${newEnemyPutref}`, 'debuff', 'enemy');
       addCombatLog({ text: `🦠 ¡INFECCIÓN! El enemigo sufre putrefacción (${newEnemyPutref})`, type: 'effect' });
       triggerCombatVfx('debuff', 'enemy');
     }
@@ -546,7 +552,7 @@ export function useCombatActions() {
     if (tech.heal) {
       const maxP = computeMaxPieces(state.maxPieces, state.equipment);
       setGameState(prev => ({ ...prev, pieces: Math.min(maxP, prev.pieces + tech.heal!) }));
-      triggerFloatingNumber(`+${tech.heal}`, 'heal');
+      triggerFloatingNumber(`+${tech.heal}`, 'heal', 'player');
       triggerCombatVfx('heal', 'player');
     }
     if (tech.freeze) {
@@ -555,10 +561,12 @@ export function useCombatActions() {
       if (currentStun >= 2) resisted = true;
       else if (currentStun === 1) resisted = Math.random() < 0.5;
       if (resisted) {
+        triggerFloatingNumber('RESISTE', 'buff', 'enemy');
         addCombatLog({ text: '¡El enemigo resiste la parálisis!', type: 'effect' });
         // Immune → reset counter so future stuns can work again
         if (currentStun >= 2) enemyStunCountRef.current = 0;
       } else {
+        triggerFloatingNumber('❄️ STUN', 'debuff', 'enemy');
         addCombatLog({ text: '¡Paralizado! El enemigo pierde su próxima acción.', type: 'effect' });
         updateCombatFx({ enemyFrozen: true });
       }
@@ -575,6 +583,7 @@ export function useCombatActions() {
     
     // Apply temp buff if skill grants one
     if (tech.shield) {
+      triggerFloatingNumber('🛡️ ESCUDO', 'buff', 'player');
       const newBuffs: TempBuffs = { ...store.getState().tempBuffs, playerDef: (store.getState().tempBuffs.playerDef || 0) + (tech.shield * 10) };
       setTempBuffs(newBuffs);
     }
@@ -623,6 +632,7 @@ export function useCombatActions() {
 
     if (intent.type === 'buff') {
       addCombatLog({ text: `${enemy.name} usa ${skillName || 'Fortalecer'}!`, type: 'enemy' });
+      triggerFloatingNumber('💪 BUFF', 'buff', 'enemy');
       playSound('buff');
       if (skillData?.fury) {
         updateCombatFx({ enemyFury: true, enemyFuryTurns: 2 });
@@ -631,6 +641,7 @@ export function useCombatActions() {
       }
     } else if (intent.type === 'defend') {
       addCombatLog({ text: `${enemy.name} usa ${skillName || 'Proteger'}!`, type: 'enemy' });
+      triggerFloatingNumber('🛡️ DEF', 'buff', 'enemy');
       playSound('shield');
       if (skillData?.shield) {
         const scaledShield = Math.min(0.8, skillData.shield * sMult);
@@ -676,7 +687,7 @@ export function useCombatActions() {
 
       setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - dmg) }));
       addCombatLog({ text: `${enemy.name} usa ${skillName || 'Ataque'} por ${dmg}!`, type: 'enemy' });
-      triggerFloatingNumber(`-${dmg}`, 'damage');
+      triggerFloatingNumber(`-${dmg}`, 'damage', 'player');
       triggerCombatVfx('slash', 'player');
       triggerShake();
       triggerFlash('damage');
@@ -686,11 +697,13 @@ export function useCombatActions() {
       if (skillData?.bleed && !combatFx.playerBleed) {
         const scaledBleed = Math.max(1, Math.floor(skillData.bleed * sMult));
         addCombatLog({ text: `¡Sangrado! -${scaledBleed} piezas/turno`, type: 'effect' });
+        triggerFloatingNumber(`🩸 -${scaledBleed}/t`, 'debuff', 'player');
         updateCombatFx({ playerBleed: true, playerBleedTurns: 999, playerBleedDmg: scaledBleed });
         triggerCombatVfx('bleed', 'player');
       }
       if (skillData?.debuff) {
         addCombatLog({ text: '¡Desconcertado! Tus golpes son más débiles.', type: 'effect' });
+        triggerFloatingNumber('💨 -30%', 'debuff', 'player');
         updateCombatFx({ playerDebuff: true, playerDebuffTurns: 2 });
         playSound('debuff');
       }
@@ -720,6 +733,7 @@ export function useCombatActions() {
           // Immune → reset counter so future stuns can work again
           if (currentStun >= 2) playerStunCountRef.current = 0;
         } else {
+          triggerFloatingNumber('❄️ STUN', 'debuff', 'player');
           addCombatLog({ text: '¡Paralizado! Próxima acción saltada.', type: 'effect' });
           updateCombatFx({ playerFrozen: true, playerStunCount: currentStun + 1 });
         }
@@ -757,11 +771,13 @@ export function useCombatActions() {
     if (combatFx.enemyBleed > 0) {
       const newHp = Math.max(0, state.enemyHp - combatFx.enemyBleed);
       setEnemyHp(newHp);
+      triggerFloatingNumber(`🩸 -${combatFx.enemyBleed}`, 'dot', 'enemy');
       addCombatLog({ text: `Sangrado: -${combatFx.enemyBleed}`, type: 'effect' });
     }
     if (combatFx.enemyPoison > 0) {
       const newHp = Math.max(0, state.enemyHp - combatFx.enemyPoison);
       setEnemyHp(newHp);
+      triggerFloatingNumber(`☠️ -${combatFx.enemyPoison}`, 'dot', 'enemy');
       addCombatLog({ text: `Veneno: -${combatFx.enemyPoison}`, type: 'effect' });
     }
     
@@ -771,6 +787,7 @@ export function useCombatActions() {
       if (infDmg > 0) {
         const newHp = Math.max(0, state.enemyHp - infDmg);
         setEnemyHp(newHp);
+        triggerFloatingNumber(`🦠 -${infDmg}`, 'dot', 'enemy');
         addCombatLog({ text: `🦠 Putrefacción del enemigo (${state.enemyPutrefaccion}): -${infDmg}`, type: 'effect' });
       }
     }
@@ -778,10 +795,12 @@ export function useCombatActions() {
     // Player bleed/poison tick — permanent until combat ends or cleansed
     if (combatFx.playerBleed && combatFx.playerBleedDmg > 0) {
       setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - combatFx.playerBleedDmg) }));
+      triggerFloatingNumber(`🩸 -${combatFx.playerBleedDmg}`, 'dot', 'player');
       addCombatLog({ text: `Sangrado: -${combatFx.playerBleedDmg} piezas`, type: 'effect' });
     }
     if (combatFx.playerPoison && combatFx.playerPoisonDmg > 0) {
       setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - combatFx.playerPoisonDmg) }));
+      triggerFloatingNumber(`☠️ -${combatFx.playerPoisonDmg}`, 'dot', 'player');
       addCombatLog({ text: `Veneno: -${combatFx.playerPoisonDmg} piezas`, type: 'effect' });
     }
     

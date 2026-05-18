@@ -195,6 +195,8 @@ export default function App() {
   const storeDefeatedBosses = useGameStore(s => s.defeatedBosses);
   const storeMaxPieces = useGameStore(s => s.maxPieces);
   const storeToasts = useGameStore(s => s.toasts);
+  const storeFloatingNumbers = useGameStore(s => s.floatingNumbers);
+  const storeCombatFx = useGameStore(s => s.combatFx);
 
   // Sync local isCombat with Zustand store — the 4-action system ends combat via store.endCombat()
   React.useEffect(() => {
@@ -2027,6 +2029,7 @@ export default function App() {
                         onConfirmOrder={() => combatActions.confirmPlayerOrder(playSound)}
                         playerActionOrder={storePlayerActionOrder || ['', '', '', '']}
                         currentActor={storeCurrentActor}
+                        combatFx={storeCombatFx}
                       />
                     </div>
 
@@ -2050,6 +2053,29 @@ export default function App() {
                         </div>
                         <span className="text-[7px] sm:text-[9px] font-black text-white/80 font-mono uppercase tracking-tighter whitespace-nowrap">{gameState.pieces}/{getMaxPieces()}</span>
                       </div>
+                      {/* Player Status Effects */}
+                      {isCombat && storeCombatFx && (
+                        <div className="flex flex-wrap gap-1 mt-0.5">
+                          {storeCombatFx.playerBleed && storeCombatFx.playerBleedDmg > 0 && (
+                            <span className="flex items-center gap-0.5 px-1 py-px bg-black/70 border border-red-400/50 rounded-sm text-[6px] sm:text-[7px] font-black text-red-400 shadow-[0_0_4px_rgba(248,113,113,0.4)]">🩸 -{storeCombatFx.playerBleedDmg}/t</span>
+                          )}
+                          {storeCombatFx.playerPoison && storeCombatFx.playerPoisonDmg > 0 && (
+                            <span className="flex items-center gap-0.5 px-1 py-px bg-black/70 border border-green-400/50 rounded-sm text-[6px] sm:text-[7px] font-black text-green-400 shadow-[0_0_4px_rgba(74,222,128,0.4)]">☠️ -{storeCombatFx.playerPoisonDmg}/t</span>
+                          )}
+                          {storeCombatFx.playerFrozen && (
+                            <motion.span animate={{ opacity: [0.6, 1, 0.6] }} transition={{ repeat: Infinity, duration: 1 }} className="flex items-center gap-0.5 px-1 py-px bg-black/70 border border-cyan-300/50 rounded-sm text-[6px] sm:text-[7px] font-black text-cyan-300 shadow-[0_0_4px_rgba(103,232,249,0.4)]">❄️ STUN</motion.span>
+                          )}
+                          {storeCombatFx.playerDebuff && storeCombatFx.playerDebuffTurns > 0 && (
+                            <span className="flex items-center gap-0.5 px-1 py-px bg-black/70 border border-purple-400/50 rounded-sm text-[6px] sm:text-[7px] font-black text-purple-400 shadow-[0_0_4px_rgba(192,132,252,0.4)]">💨 -30% ({storeCombatFx.playerDebuffTurns})</span>
+                          )}
+                          {storeCombatFx.playerShield && (
+                            <span className="flex items-center gap-0.5 px-1 py-px bg-black/70 border border-blue-400/50 rounded-sm text-[6px] sm:text-[7px] font-black text-blue-400 shadow-[0_0_4px_rgba(96,165,250,0.4)]">🛡️ ESCUDO</span>
+                          )}
+                          {storeCombatFx.playerGuard && (
+                            <span className="flex items-center gap-0.5 px-1 py-px bg-black/70 border border-blue-300/50 rounded-sm text-[6px] sm:text-[7px] font-black text-blue-300 shadow-[0_0_4px_rgba(96,165,250,0.3)]">🛡️ GUARDA</span>
+                          )}
+                        </div>
+                      )}
 
                     </div>
 
@@ -2490,11 +2516,36 @@ export default function App() {
         </AnimatePresence>
       </div>
 
-      {floatingNumbers.map(f => (
-        <motion.div key={f.id} initial={{ opacity: 1, y: 0, x: `${f.x}%`, top: `${f.y}%` }} animate={{ opacity: 0, y: -120 }} className={`absolute z-[1000] font-black font-display pointer-events-none ${f.type === 'damage' ? 'text-danger text-3xl' : f.type === 'heal' ? 'text-green-400 text-2xl' : f.type === 'crit' ? 'text-accent text-4xl' : 'text-blue-400 text-2xl'}`}>
-          {f.val}
-        </motion.div>
-      ))}
+      {/* Floating Numbers — read from Zustand store (4-action system) */}
+      <AnimatePresence>
+        {storeFloatingNumbers.map(f => {
+          const style = (() => {
+            switch (f.type) {
+              case 'crit': return { text: 'text-yellow-300 text-3xl sm:text-4xl', shadow: 'drop-shadow-[0_0_8px_rgba(250,204,21,0.9)]', initialScale: 1.4 };
+              case 'damage': return { text: 'text-red-400 text-2xl sm:text-3xl', shadow: 'drop-shadow-[0_0_6px_rgba(248,113,113,0.8)]', initialScale: 1.2 };
+              case 'heal': return { text: 'text-green-400 text-xl sm:text-2xl', shadow: 'drop-shadow-[0_0_6px_rgba(74,222,128,0.8)]', initialScale: 1.1 };
+              case 'shield': return { text: 'text-blue-400 text-xl sm:text-2xl', shadow: 'drop-shadow-[0_0_6px_rgba(96,165,250,0.8)]', initialScale: 1.1 };
+              case 'buff': return { text: 'text-amber-300 text-lg sm:text-xl', shadow: 'drop-shadow-[0_0_6px_rgba(251,191,36,0.8)]', initialScale: 1.0 };
+              case 'debuff': return { text: 'text-purple-400 text-lg sm:text-xl', shadow: 'drop-shadow-[0_0_6px_rgba(192,132,252,0.8)]', initialScale: 1.0 };
+              case 'dot': return { text: 'text-orange-400 text-lg sm:text-xl', shadow: 'drop-shadow-[0_0_6px_rgba(251,146,60,0.8)]', initialScale: 1.0 };
+              default: return { text: 'text-white text-2xl', shadow: '', initialScale: 1.0 };
+            }
+          })();
+          return (
+            <motion.div
+              key={f.id}
+              initial={{ opacity: 0, y: 0, scale: style.initialScale * 1.3, x: `${f.x}%`, top: `${f.y}%` }}
+              animate={{ opacity: [0, 1, 1, 1, 0], y: [0, -10, -30, -60, -90], scale: [style.initialScale * 1.3, style.initialScale, style.initialScale, style.initialScale * 0.9, style.initialScale * 0.7] }}
+              exit={{ opacity: 0, y: -100, scale: 0.5 }}
+              transition={{ duration: 1.8, ease: 'easeOut', times: [0, 0.1, 0.4, 0.7, 1] }}
+              className={`absolute z-[1000] font-black font-display pointer-events-none whitespace-nowrap ${style.text} ${style.shadow}`}
+              style={{ left: 0, right: 0, textAlign: 'center', transform: 'translateX(-50%)', textShadow: '0 2px 4px rgba(0,0,0,0.9)' }}
+            >
+              {f.val}
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
 
       <AnimatePresence>
         {npcDialog && (

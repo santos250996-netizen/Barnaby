@@ -321,3 +321,36 @@ Stage Summary:
 - Infinite loop fixed by using useRef instead of state dependency
 - Enemy putrefaction bar confirmed working (was already implemented)
 - Build passes successfully
+---
+Task ID: 1
+Agent: Super Z (main)
+Task: Redesign combat visual feedback — floating numbers, status effects, DOT indicators
+
+Work Log:
+- Diagnosed root cause: floating numbers from useCombatActions (4-action system) wrote to Zustand store but BarnabyGame.tsx rendered from local state → numbers never visible
+- Added `target` ('player'|'enemy') and `subType` ('buff'|'debuff'|'dot') to FloatingNumber type
+- Rewrote triggerFloatingNumber in useCombatActions: target-aware positioning (enemy=top half, player=bottom), 2s timeout (was 1s)
+- Added 20+ new triggerFloatingNumber calls for ALL combat events:
+  - Player: self-damage (putrefaction), bleed, debuff, shield, heal, freeze, infection
+  - Enemy: bleed, debuff, shield, fury, buff, defend, freeze
+  - End-of-turn DOT: bleed ticks (🩸), poison ticks (☠️), infection ticks (🦠)
+- Rewrote floating number rendering in BarnabyGame.tsx:
+  - Now reads from storeFloatingNumbers (Zustand) instead of local state
+  - AnimatePresence with proper enter/exit
+  - 1.8s animation with keyframes: pop in → hold → float up → fade out
+  - 7 color-coded types: crit (yellow), damage (red), heal (green), shield (blue), buff (amber), debuff (purple), dot (orange)
+  - text-shadow + drop-shadow for readability against any background
+  - Crit numbers are bigger (1.4x), damage slightly bigger (1.2x)
+- Added persistent status effect indicators:
+  - EnemyCard: renderEnemyStatusEffects() shows badges for bleed/poison/frozen/debuff/fury/shield
+  - Player HP bar area: inline badges for bleed/poison/frozen/debuff/shield/guard
+  - Each badge: emoji + value + glow color, compact 6-7px font
+  - Frozen badge pulses with motion animation
+
+Stage Summary:
+- Files modified: types.ts, useCombatActions.ts, BarnabyGame.tsx, EnemyCard.tsx
+- Floating numbers now render correctly from Zustand store
+- Every combat event has visible feedback (damage, heal, buff, debuff, DOT, status)
+- Status effects persist as badges on both player and enemy areas
+- 0 new lint errors (3 pre-existing)
+- Build passes successfully

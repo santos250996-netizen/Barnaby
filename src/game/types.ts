@@ -84,7 +84,8 @@ export interface Toast {
 export interface FloatingNumber {
   id: number;
   val: string;
-  type: 'damage' | 'heal' | 'crit' | 'shield';
+  type: 'damage' | 'heal' | 'crit' | 'shield' | 'buff' | 'debuff' | 'dot';
+  target: 'player' | 'enemy';
   x: number;
   y: number;
 }

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TDB } from '@/game/data';
-import { EquipSlot } from '@/game/types';
+import { EquipSlot, CombatFx } from '@/game/types';
 import { Technique } from '@/game/data/types';
 import { getPutrefaccionState, getMutation, PUTREFACCION_MAX, slotName, enemyPutrefaccionDmg, enemyPutrefaccionReduction } from '@/game/data/putrefaccion';
 
@@ -55,6 +55,7 @@ interface EnemyCardProps {
   onConfirmOrder: () => void;
   playerActionOrder: string[];
   currentActor: 'player' | 'enemy' | null;
+  combatFx?: CombatFx | null;
 }
 
 export function EnemyCard({
@@ -79,6 +80,7 @@ export function EnemyCard({
   onConfirmOrder,
   playerActionOrder,
   currentActor,
+  combatFx,
 }: EnemyCardProps) {
   const img = enemy?.name ? ENEMY_IMAGES[enemy.name] : null;
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
@@ -426,6 +428,38 @@ export function EnemyCard({
     );
   };
 
+  const renderEnemyStatusEffects = () => {
+    if (!combatFx) return null;
+    const fx = combatFx;
+    const effects: { emoji: string; label: string; color: string; glow: string; turns?: number }[] = [];
+
+    if (fx.enemyBleed > 0) effects.push({ emoji: '🩸', label: `-${fx.enemyBleed}/t`, color: 'text-red-400', glow: 'shadow-[0_0_4px_rgba(248,113,113,0.6)]' });
+    if (fx.enemyPoison > 0) effects.push({ emoji: '☠️', label: `-${fx.enemyPoison}/t`, color: 'text-green-400', glow: 'shadow-[0_0_4px_rgba(74,222,128,0.6)]' });
+    if (fx.enemyFrozen) effects.push({ emoji: '❄️', label: 'STUN', color: 'text-cyan-300', glow: 'shadow-[0_0_4px_rgba(103,232,249,0.6)]' });
+    if (fx.enemyDebuff && fx.enemyDebuffTurns > 0) effects.push({ emoji: '💨', label: `-30%${fx.enemyDebuffTurns > 0 ? ` (${fx.enemyDebuffTurns})` : ''}`, color: 'text-purple-400', glow: 'shadow-[0_0_4px_rgba(192,132,252,0.6)]', turns: fx.enemyDebuffTurns });
+    if (fx.enemyFury && fx.enemyFuryTurns > 0) effects.push({ emoji: '💪', label: `+50%${fx.enemyFuryTurns > 0 ? ` (${fx.enemyFuryTurns})` : ''}`, color: 'text-orange-400', glow: 'shadow-[0_0_4px_rgba(251,146,60,0.6)]', turns: fx.enemyFuryTurns });
+    if (fx.enemyShield) effects.push({ emoji: '🛡️', label: `-${Math.floor((fx.enemyShieldValue || 0.4) * 100)}%`, color: 'text-blue-400', glow: 'shadow-[0_0_4px_rgba(96,165,250,0.6)]' });
+
+    if (effects.length === 0) return null;
+
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        {effects.map((e, i) => (
+          <motion.div
+            key={i}
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`flex items-center gap-0.5 px-1 py-px bg-black/70 border rounded-sm text-[6px] sm:text-[7px] font-black ${e.color} ${e.glow}`}
+            style={{ borderColor: 'currentColor' }}
+          >
+            <span>{e.emoji}</span>
+            <span>{e.label}</span>
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
+
   const ENEMY_PUTREF_MAX = 10; // máximo de infección al enemigo
 
   const renderEnemyPutrefBar = () => {
@@ -470,6 +504,7 @@ export function EnemyCard({
       <div className={`text-${large ? '[7px] sm:text-[9px]' : '[8px] sm:text-[10px]'} font-black text-white/80 font-mono uppercase tracking-tighter${large ? ' mt-1' : ''}`}>
         {enemyHp} / {enemyMaxHp} HP
       </div>
+      {renderEnemyStatusEffects()}
       {renderEnemyPutrefBar()}
     </>
   );
@@ -492,6 +527,7 @@ export function EnemyCard({
           <div className="text-[8px] sm:text-[10px] font-black text-white/80 font-mono uppercase tracking-tighter">
             {enemyHp} / {enemyMaxHp} HP
           </div>
+          {renderEnemyStatusEffects()}
           {renderEnemyPutrefBar()}
         </div>
         {turnPhase !== 'executing' && renderActionButtons()}
@@ -510,6 +546,7 @@ export function EnemyCard({
         <motion.div initial={false} animate={{ width: `${enemyMaxHp > 0 ? (enemyHp / enemyMaxHp) * 100 : 0}%` }} transition={{ type: 'spring', damping: 20, stiffness: 100 }} className="h-full bg-gradient-to-r from-red-600 to-red-400 relative z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
       </div>
       <div className="text-[7px] sm:text-[9px] font-black text-white/80 font-mono uppercase tracking-tighter mt-1">{enemyHp} / {enemyMaxHp} HP</div>
+      {renderEnemyStatusEffects()}
       {renderEnemyPutrefBar()}
       {turnPhase !== 'executing' && renderActionButtons()}
     </div>
