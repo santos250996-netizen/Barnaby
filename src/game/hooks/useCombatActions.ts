@@ -570,16 +570,13 @@ export function useCombatActions() {
         triggerCombatVfx('fury', 'enemy');
       }
     } else {
-      // Attack
-      const isEnemyMagic = intent.type === 'buff' ? false : (intent.skillData?.type === 'magic' || intent.skillData?.type === 'ultimate');
+      // Attack — intent.value already has defense subtracted in calculateEnemyActionsForTurn
+      // Only add temp buffs here, do NOT subtract defense again
       let dmg: number;
       if (isEnemyMagic) {
-        const enemyMag = (state.enemy?.magic || 3);
-        const playerMagicRes = computeMagicRes(state.equipment);
-        dmg = intent.value + enemyMag - Math.floor(playerMagicRes * 0.5);
+        dmg = intent.value + tempBuffs.enemyAtk;
       } else {
-        const playerDef = computeDefense(state.equipment);
-        dmg = intent.value + tempBuffs.enemyAtk - Math.floor(playerDef * 0.5);
+        dmg = intent.value + tempBuffs.enemyAtk;
       }
       if (combatFx.enemyDebuff && combatFx.enemyDebuffTurns > 0) dmg = Math.floor(dmg * 0.7);
       if (skillData?.armorPen) {
