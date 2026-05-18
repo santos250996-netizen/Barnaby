@@ -1384,7 +1384,8 @@ export default function App() {
     // ── Validar putrefacción: no permitir exceder el máximo de usos ──
     const slot = findSkillSlot(techName);
     if (slot) {
-      const currentPutref = storePlayerPutrefaccion?.[slot] || 0;
+      // USAR storeState (fresco) no storePlayerPutrefaccion (puede estar stale del hook)
+      const currentPutref = storeState.playerPutrefaccion?.[slot] || 0;
       const timesAlreadySelected = currentOrder.filter(s => s === techName).length;
       const remainingUses = PUTREFACCION_MAX - currentPutref;
       if (timesAlreadySelected >= remainingUses) return; // No más usos permitidos
