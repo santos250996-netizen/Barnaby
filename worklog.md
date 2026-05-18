@@ -297,3 +297,27 @@ Stage Summary:
 - El jugador ahora ve exactamente qué pasa en cada uso de cada skill
 - Formato visual claro: buffs en verde, costos en rojo, extras en azul, infección en púrpura
 - 0 nuevos errores de lint
+---
+Task ID: 1
+Agent: Super Z (main)
+Task: Fix infinite loop — Maximum update depth exceeded in BarnabyGame.tsx useEffect
+
+Work Log:
+- Diagnosed circular dependency between two useEffects:
+  - Effect 1 (line 232): synced storePieces → gameState.pieces, depended on gameState.pieces
+  - Effect 2 (line 548): synced gameState → Zustand store on every gameState change
+  - When Effect 1 set gameState, Effect 2 wrote back to store, which updated storePieces, re-triggering Effect 1
+- Fixed by replacing gameState.pieces dependency with a useRef tracker (lastSyncedStorePiecesRef)
+  - Ref stores last synced value to prevent re-triggering on same value
+  - Removed gameState.pieces from dependency array entirely, breaking the cycle
+- Verified enemy putrefaction bar already exists in EnemyCard.tsx (renderEnemyPutrefBar)
+  - Shows below enemy HP bar when infection > 0
+  - Only triggers at Necrótico state (level 3) via infectEnemy mutation
+  - Color-coded: green (1-2) → orange (3-5) → red (6+)
+  - Shows DOT damage and damage reduction stats
+
+Stage Summary:
+- File modified: src/game/BarnabyGame.tsx (line 232-240)
+- Infinite loop fixed by using useRef instead of state dependency
+- Enemy putrefaction bar confirmed working (was already implemented)
+- Build passes successfully

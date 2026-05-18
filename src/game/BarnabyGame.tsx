@@ -229,11 +229,15 @@ export default function App() {
   }, [storeIsCombat]);
 
   // During combat, sync gameState.pieces with store (enemy attacks update store directly)
+  // Use a ref to break the circular dependency: store→local (this effect) → persistence → store
+  // Without the ref, having gameState.pieces in deps creates an infinite loop.
+  const lastSyncedStorePiecesRef = useRef<number | undefined>(undefined);
   React.useEffect(() => {
-    if (isCombat && storePieces !== undefined && storePieces !== gameState.pieces) {
+    if (isCombat && storePieces !== undefined && storePieces !== lastSyncedStorePiecesRef.current) {
+      lastSyncedStorePiecesRef.current = storePieces;
       setGameState(prev => ({ ...prev, pieces: storePieces }));
     }
-  }, [isCombat, storePieces, gameState.pieces]);
+  }, [isCombat, storePieces]);
 
   // During combat, sync local enemyHp with store so HP bar stays consistent
   React.useEffect(() => {
