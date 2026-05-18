@@ -1915,9 +1915,20 @@ export default function App() {
                         <span className="sm:hidden">Vida</span>
                         <span className="hidden sm:inline">Integridad Ósea</span>
                       </span>
-                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#d4c4a0] border border-[#8a7a60] rounded-sm">
-                        <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-[#5a4020]">⚡ Esqueleto</span>
-                      </div>
+                      {(() => {
+                        const gs = getGearScore();
+                        const rank = getGearRank(gs);
+                        return (
+                          <div className="flex items-center gap-1 px-1.5 py-0.5 bg-[#d4c4a0] border border-[#8a7a60] rounded-sm">
+                            <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest" style={{ color: rank.color === '#9ca3af' ? '#5a4020' : rank.color }}>
+                              {rank.label}
+                            </span>
+                            <span className="text-[8px] sm:text-[9px] font-black font-mono text-[#5a4020]">
+                              ⚔️{gs}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                     <div className="w-16 sm:w-40 h-2 sm:h-2.5 bg-[#0e0c14] border border-[#8a7a60]/40">
                       <motion.div 
@@ -1926,21 +1937,7 @@ export default function App() {
                         className={`h-full ${gameState.pieces / Math.max(1, getMaxPieces()) < 0.3 ? 'bg-gradient-to-r from-red-700 to-red-500 animate-pulse' : 'bg-gradient-to-r from-red-600 to-red-400'}`} 
                       />
                     </div>
-                    {/* No XP bar — level/XP system removed, replaced by GearScore */}
-                    {(() => {
-                      const gs = getGearScore();
-                      const rank = getGearRank(gs);
-                      return (
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className="text-[8px] font-black uppercase tracking-widest" style={{ color: rank.color }}>
-                            {rank.label}
-                          </span>
-                          <span className="text-[9px] font-bold font-mono" style={{ color: '#d4943a' }}>
-                            ⚔️{gs}
-                          </span>
-                        </div>
-                      );
-                    })()}
+                    {/* GearScore shown in badge above, replacing old level display */}
                   </div>
                 )}
                 {/* Compact combat indicator — always visible during combat */}
