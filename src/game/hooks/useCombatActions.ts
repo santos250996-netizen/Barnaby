@@ -44,7 +44,7 @@ function computeAttack(equipment: Record<string, EquipSlot | null>): number {
       if (count >= 4) bonus += setData.bonus4.stats?.attack || 0;
     }
   });
-  return 8 + bonus;
+  return 3 + bonus;
 }
 
 function computeDefense(equipment: Record<string, EquipSlot | null>): number {
@@ -60,7 +60,39 @@ function computeDefense(equipment: Record<string, EquipSlot | null>): number {
       if (count >= 4) bonus += setData.bonus4.stats?.defense || 0;
     }
   });
-  return 2 + bonus;
+  return 3 + bonus;
+}
+
+function computeMagic(equipment: Record<string, EquipSlot | null>): number {
+  let bonus = 0;
+  (Object.values(equipment) as (EquipSlot | null)[]).forEach(eq => {
+    if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magic || 0;
+  });
+  const sets = computeActiveSets(equipment);
+  Object.entries(sets).forEach(([setName, count]) => {
+    const setData = (SETS as any)[setName];
+    if (setData) {
+      if (count >= 2) bonus += setData.bonus2.stats?.magic || 0;
+      if (count >= 4) bonus += setData.bonus4.stats?.magic || 0;
+    }
+  });
+  return 3 + bonus; // base 3
+}
+
+function computeMagicRes(equipment: Record<string, EquipSlot | null>): number {
+  let bonus = 0;
+  (Object.values(equipment) as (EquipSlot | null)[]).forEach(eq => {
+    if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magicRes || 0;
+  });
+  const sets = computeActiveSets(equipment);
+  Object.entries(sets).forEach(([setName, count]) => {
+    const setData = (SETS as any)[setName];
+    if (setData) {
+      if (count >= 2) bonus += setData.bonus2.stats?.magicRes || 0;
+      if (count >= 4) bonus += setData.bonus4.stats?.magicRes || 0;
+    }
+  });
+  return 3 + bonus; // base 3
 }
 
 function computeCrit(baseCrit: number, equipment: Record<string, EquipSlot | null>): number {
@@ -240,6 +272,7 @@ export function useCombatActions() {
   const calculateEnemyActionsForTurn = useCallback(
     (enemyData: any, currentEnemyHp: number, currentEnemyMaxHp: number, isMasterUsed: boolean): EnemyIntent[] => {
       const def = computeDefense(store.getState().equipment);
+      const magicRes = computeMagicRes(store.getState().equipment);
       const preRolledDrop = store.getState().preRolledDrop;
       const parts = enemyData.parts || [];
       let skillIds: string[] = parts.map((p: any) => p.skill);
@@ -266,13 +299,15 @@ export function useCombatActions() {
       return skillIds.map((sid, idx) => {
         const skillRef = TDB[sid];
         if (skillRef) {
-          const baseAtk = enemyData.attack;
-          const atkScale = baseAtk / 10;
-          let skillDmg = skillRef.damage > 0 ? Math.floor(skillRef.damage * atkScale) : baseAtk;
+          const isMagicSkill = skillRef.type === 'magic' || skillRef.type === 'ultimate';
+          const baseStat = isMagicSkill ? (enemyData.magic || 3) : enemyData.attack;
+          const atkScale = baseStat / 10;
+          let skillDmg = skillRef.damage > 0 ? Math.floor(skillRef.damage * atkScale) : baseStat;
           const enemySkillRarities = enemyData._skillRarities || preRolledDrop?.skillRarities || {};
           const skillRarity = enemySkillRarities[sid];
           if (skillRarity && skillDmg > 0) skillDmg = Math.floor(skillDmg * SKILL_RARITY_MULTIPLIER[skillRarity]);
-          let estimatedDmg = Math.max(1, Math.floor(skillDmg * (0.85 + Math.random() * 0.3)) - Math.floor(def * 0.5));
+          const resistStat = isMagicSkill ? magicRes : def;
+          let estimatedDmg = Math.max(1, Math.floor(skillDmg * (0.85 + Math.random() * 0.3)) - Math.floor(resistStat * 0.5));
           estimatedDmg = Math.max(Math.floor(skillDmg * 0.3), estimatedDmg);
           let totalDmg = estimatedDmg;
           if (skillRef.multi) totalDmg = estimatedDmg + Math.floor(estimatedDmg * 0.5) * (skillRef.multi - 1);
@@ -324,7 +359,8 @@ export function useCombatActions() {
     const tech = TDB[skillId];
     if (!tech) { onComplete(); return; }
 
-    const isPhys = tech.type === 'basic' || tech.type === 'bleed' || tech.type === 'steal';
+    const isPhys = tech.type === 'basic' || tech.type === 'bleed' || tech.type === 'steal' || tech.type === 'sacrifice';
+    const isMagicSkill = tech.type === 'magic' || tech.type === 'ultimate';
     const cost = tech.cost || 0;
     if (state.pieces < cost) { addToast('Piezas insuficientes!', 'error'); onComplete(); return; }
 
@@ -334,11 +370,20 @@ export function useCombatActions() {
     if (tech.name === 'Detonacion Osea') setGameState(prev => ({ ...prev, maxPieces: Math.max(50, prev.maxPieces - 20) }));
     if (tech.name === 'Barrera Costillas') setGameState(prev => ({ ...prev, maxPieces: Math.max(50, prev.maxPieces - 15) }));
 
-    const attack = computeAttack(state.equipment);
+    const playerAtk = computeAttack(state.equipment);
+    const playerMag = computeMagic(state.equipment);
     const crit = computeCrit(state.resources.crit, state.equipment);
     const combatFx = state.combatFx || DEFAULT_COMBAT_FX;
 
-    let dmg = tech.damage + (isPhys ? attack : Math.floor(attack * 0.3));
+    let dmg: number;
+    if (isMagicSkill) {
+      const enemyMagicRes = (state.enemy?.magicRes || 3);
+      dmg = tech.damage + playerMag - Math.floor(enemyMagicRes * 0.5);
+    } else {
+      const enemyDef = (state.enemy?.defense || 3);
+      dmg = tech.damage + playerAtk - Math.floor(enemyDef * 0.5);
+    }
+    dmg = Math.max(1, dmg);
     // Apply temp buffs
     const tempBuffs = state.tempBuffs;
     dmg += tempBuffs.playerAtk;
@@ -526,7 +571,16 @@ export function useCombatActions() {
       }
     } else {
       // Attack
-      let dmg = intent.value + tempBuffs.enemyAtk;
+      const isEnemyMagic = intent.type === 'buff' ? false : (intent.skillData?.type === 'magic' || intent.skillData?.type === 'ultimate');
+      let dmg: number;
+      if (isEnemyMagic) {
+        const enemyMag = (state.enemy?.magic || 3);
+        const playerMagicRes = computeMagicRes(state.equipment);
+        dmg = intent.value + enemyMag - Math.floor(playerMagicRes * 0.5);
+      } else {
+        const playerDef = computeDefense(state.equipment);
+        dmg = intent.value + tempBuffs.enemyAtk - Math.floor(playerDef * 0.5);
+      }
       if (combatFx.enemyDebuff && combatFx.enemyDebuffTurns > 0) dmg = Math.floor(dmg * 0.7);
       if (skillData?.armorPen) {
         if (combatFx.playerShield) dmg = Math.floor(dmg * (0.5 + skillData.armorPen * 0.5));
@@ -905,9 +959,11 @@ export function useCombatActions() {
             const scaledStats: Record<string, number> = {};
             if (partData.stats) Object.entries(partData.stats).forEach(([stat, val]) => { scaledStats[stat] = scaleStat(val as number, listedRarity, itemRarity); });
             if (scaledStats.attack) enemyData.attack += scaledStats.attack;
-            if (scaledStats.defense) enemyData.hp += scaledStats.defense * 3;
+            if (scaledStats.defense) enemyData.defense = (enemyData.defense || 3) + scaledStats.defense;
+            if (scaledStats.magic) enemyData.magic = (enemyData.magic || 3) + scaledStats.magic;
+            if (scaledStats.magicRes) enemyData.magicRes = (enemyData.magicRes || 3) + scaledStats.magicRes;
             if (scaledStats.speed) enemyData.speed = (enemyData.speed || 10) + scaledStats.speed;
-            if (scaledStats.crit) enemyData.crit = (enemyData.crit || 0) + scaledStats.crit;
+            if (scaledStats.crit) enemyData.crit = (enemyData.crit || 3) + scaledStats.crit;
             if (partData.skillIds && enemyData.intentPattern) enemyData._skillRarities = skillRarities;
             preRoll = { itemName: dropPartName, itemRarity, skillRarities, partStats: scaledStats };
           }

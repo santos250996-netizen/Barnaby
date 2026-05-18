@@ -96,16 +96,20 @@ export interface FloatingNumber {
 export type TurnPhase = 'planning' | 'executing';
 
 export interface TempBuffs {
-  playerAtk: number;   // bonus attack this turn
-  playerDef: number;   // bonus defense this turn
-  playerCrit: number;  // bonus crit this turn
-  enemyAtk: number;    // bonus attack this turn
-  enemyDef: number;    // bonus defense this turn
+  playerAtk: number;     // bonus attack this turn
+  playerDef: number;     // bonus defense this turn
+  playerCrit: number;    // bonus crit this turn
+  playerMag: number;     // bonus magic this turn
+  playerMagRes: number;  // bonus magic resistance this turn
+  enemyAtk: number;      // bonus attack this turn
+  enemyDef: number;      // bonus defense this turn
+  enemyMag: number;      // bonus magic this turn
+  enemyMagRes: number;   // bonus magic resistance this turn
 }
 
 export const DEFAULT_TEMP_BUFFS: TempBuffs = {
-  playerAtk: 0, playerDef: 0, playerCrit: 0,
-  enemyAtk: 0, enemyDef: 0,
+  playerAtk: 0, playerDef: 0, playerCrit: 0, playerMag: 0, playerMagRes: 0,
+  enemyAtk: 0, enemyDef: 0, enemyMag: 0, enemyMagRes: 0,
 };
 
 export const INITIAL_STATE: GameState = {

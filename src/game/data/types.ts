@@ -31,6 +31,9 @@ export type Rarity = typeof RARITIES[number];
 export interface EnemyData {
   hp: number;
   attack: number;
+  defense?: number;
+  magic?: number;
+  magicRes?: number;
   reward: { shards: number };
   emoji: string;
   archetype: string;
@@ -40,6 +43,7 @@ export interface EnemyData {
   masterSkill: string;
   isBoss?: boolean;
   speed?: number;
+  crit?: number;
   parts?: { name: string; skill: string }[];
 }
 

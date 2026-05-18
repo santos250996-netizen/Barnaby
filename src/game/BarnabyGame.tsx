@@ -339,7 +339,7 @@ export default function App() {
         const stats = itemData.stats || {};
         const rarityMult = RARITY_CONFIG[eq.rarity].multiplier;
         // Sum all weighted stats for this piece
-        const pieceStats = (stats.attack || 0) + (stats.defense || 0) + (stats.speed || 0) + (stats.crit || 0);
+        const pieceStats = (stats.attack || 0) + (stats.defense || 0) + (stats.speed || 0) + (stats.crit || 0) + (stats.magic || 0) + (stats.magicRes || 0);
         totalStats += pieceStats * rarityMult;
         rarityWeightSum += rarityMult;
         equippedCount++;
@@ -355,11 +355,11 @@ export default function App() {
         const avgMult = equippedCount > 0 ? rarityWeightSum / equippedCount : 1;
         if ((count as number) >= 2) {
           const b2 = setData.bonus2.stats || {};
-          setStatBonus += ((b2.attack || 0) + (b2.defense || 0) + (b2.speed || 0) + (b2.crit || 0)) * avgMult;
+          setStatBonus += ((b2.attack || 0) + (b2.defense || 0) + (b2.speed || 0) + (b2.crit || 0) + (b2.magic || 0) + (b2.magicRes || 0)) * avgMult;
         }
         if ((count as number) >= 4) {
           const b4 = setData.bonus4.stats || {};
-          setStatBonus += ((b4.attack || 0) + (b4.defense || 0) + (b4.speed || 0) + (b4.crit || 0)) * avgMult;
+          setStatBonus += ((b4.attack || 0) + (b4.defense || 0) + (b4.speed || 0) + (b4.crit || 0) + (b4.magic || 0) + (b4.magicRes || 0)) * avgMult;
         }
       }
     });
@@ -368,10 +368,10 @@ export default function App() {
   }, [gameState.equipment, getActiveSets]);
 
   const getGearRank = useCallback((gs: number) => {
-    if (gs >= 250) return { label: 'Leyenda', color: '#eab308' };
-    if (gs >= 180) return { label: 'Campeón', color: '#a855f7' };
-    if (gs >= 100) return { label: 'Veterano', color: '#3b82f6' };
-    if (gs >= 40) return { label: 'Aventurero', color: '#22c55e' };
+    if (gs >= 350) return { label: 'Leyenda', color: '#eab308' };
+    if (gs >= 250) return { label: 'Campeón', color: '#a855f7' };
+    if (gs >= 150) return { label: 'Veterano', color: '#3b82f6' };
+    if (gs >= 60) return { label: 'Aventurero', color: '#22c55e' };
     return { label: 'Novato', color: '#9ca3af' };
   }, []);
 
@@ -401,7 +401,7 @@ export default function App() {
       }
     });
 
-    return 8 + bonus;
+    return 3 + bonus;
   }, [gameState.equipment, getActiveSets]);
 
   const getDefense = useCallback(() => {
@@ -420,7 +420,7 @@ export default function App() {
       }
     });
 
-    return 2 + bonus;
+    return 3 + bonus;
   }, [gameState.equipment, getActiveSets]);
 
   const getCrit = useCallback(() => {
@@ -441,6 +441,38 @@ export default function App() {
 
     return gameState.resources.crit + bonus;
   }, [gameState.resources.crit, gameState.equipment, getActiveSets]);
+
+  const getMagic = useCallback(() => {
+    let bonus = 0;
+    (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
+      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magic || 0;
+    });
+    const sets = getActiveSets();
+    Object.entries(sets).forEach(([setName, count]) => {
+      const setData = (SETS as any)[setName];
+      if (setData) {
+        if ((count as number) >= 2) bonus += setData.bonus2.stats?.magic || 0;
+        if ((count as number) >= 4) bonus += setData.bonus4.stats?.magic || 0;
+      }
+    });
+    return 3 + bonus;
+  }, [gameState.equipment, getActiveSets]);
+
+  const getMagicRes = useCallback(() => {
+    let bonus = 0;
+    (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
+      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magicRes || 0;
+    });
+    const sets = getActiveSets();
+    Object.entries(sets).forEach(([setName, count]) => {
+      const setData = (SETS as any)[setName];
+      if (setData) {
+        if ((count as number) >= 2) bonus += setData.bonus2.stats?.magicRes || 0;
+        if ((count as number) >= 4) bonus += setData.bonus4.stats?.magicRes || 0;
+      }
+    });
+    return 3 + bonus;
+  }, [gameState.equipment, getActiveSets]);
 
   const getSpeed = useCallback(() => {
     let bonus = 0;
@@ -958,7 +990,7 @@ export default function App() {
     storeState.setTurnPhase('planning');
     storeState.setCurrentActionSlot(0);
     storeState.setTurnNumber(0);
-    storeState.setTempBuffs({ playerAtk: 0, playerDef: 0, playerCrit: 0, enemyAtk: 0, enemyDef: 0 });
+    storeState.setTempBuffs({ playerAtk: 0, playerDef: 0, playerCrit: 0, playerMag: 0, playerMagRes: 0, enemyAtk: 0, enemyDef: 0, enemyMag: 0, enemyMagRes: 0 });
     storeState.setCombatMenu('main');
   };
 
