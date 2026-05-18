@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { TDB } from '@/game/data';
 import { EquipSlot } from '@/game/types';
 import { Technique } from '@/game/data/types';
-import { getPutrefaccionState, getMutation, PUTREFACCION_MAX, slotName } from '@/game/data/putrefaccion';
+import { getPutrefaccionState, getMutation, PUTREFACCION_MAX, slotName, enemyPutrefaccionDmg, enemyPutrefaccionReduction } from '@/game/data/putrefaccion';
 
 const ENEMY_IMAGES: Record<string, string> = {
   'Trasgo Tontin': '/game/enemies/enemy-trasgo-tontin.png',
@@ -426,6 +426,41 @@ export function EnemyCard({
     );
   };
 
+  const ENEMY_PUTREF_MAX = 10; // máximo de infección al enemigo
+
+  const renderEnemyPutrefBar = () => {
+    const lvl = enemyPutrefaccion || 0;
+    if (lvl <= 0) return null;
+    const pct = Math.min(100, (lvl / ENEMY_PUTREF_MAX) * 100);
+    const dmg = enemyPutrefaccionDmg(lvl);
+    const reduction = enemyPutrefaccionReduction(lvl);
+    // Color por severidad
+    let barColor = 'from-green-600 to-green-400';
+    let glowColor = 'rgba(74,222,128,0.4)';
+    let textColor = 'text-green-400';
+    if (lvl >= 6) { barColor = 'from-red-600 to-red-400'; glowColor = 'rgba(220,38,38,0.5)'; textColor = 'text-red-400'; }
+    else if (lvl >= 3) { barColor = 'from-orange-500 to-orange-300'; glowColor = 'rgba(249,115,22,0.4)'; textColor = 'text-orange-400'; }
+
+    return (
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className="text-[7px] sm:text-[8px] font-black text-purple-400 whitespace-nowrap">🦠</span>
+        <div className="flex-1 h-1.5 sm:h-2 bg-black/60 border border-purple-500/30 p-[1px] relative overflow-hidden">
+          <motion.div
+            initial={false}
+            animate={{ width: `${pct}%` }}
+            transition={{ type: 'spring', damping: 20, stiffness: 100 }}
+            className={`h-full bg-gradient-to-r ${barColor} relative z-20 shadow-[0_0_8px_${glowColor}]`}
+          />
+        </div>
+        <div className="flex items-center gap-1">
+          {dmg > 0 && <span className="text-[6px] sm:text-[7px] font-black text-red-400/80">-{dmg}/t</span>}
+          {reduction > 0 && <span className="text-[6px] sm:text-[7px] font-black text-blue-400/80">-{reduction}%</span>}
+          <span className={`text-[6px] sm:text-[7px] font-black ${textColor}`}>{lvl}</span>
+        </div>
+      </div>
+    );
+  };
+
   const renderHpBar = (large: boolean) => (
     <>
       <div className={`w-${large ? '4/5' : 'full'} h-${large ? '1.5 sm:h-2' : '2 sm:h-2.5'} bg-black/60 border border-danger/30 p-[1px] relative overflow-hidden${large ? ' mt-2' : ''}`}>
@@ -435,6 +470,7 @@ export function EnemyCard({
       <div className={`text-${large ? '[7px] sm:text-[9px]' : '[8px] sm:text-[10px]'} font-black text-white/80 font-mono uppercase tracking-tighter${large ? ' mt-1' : ''}`}>
         {enemyHp} / {enemyMaxHp} HP
       </div>
+      {renderEnemyPutrefBar()}
     </>
   );
 
@@ -456,6 +492,7 @@ export function EnemyCard({
           <div className="text-[8px] sm:text-[10px] font-black text-white/80 font-mono uppercase tracking-tighter">
             {enemyHp} / {enemyMaxHp} HP
           </div>
+          {renderEnemyPutrefBar()}
         </div>
         {turnPhase !== 'executing' && renderActionButtons()}
       </div>
@@ -473,6 +510,7 @@ export function EnemyCard({
         <motion.div initial={false} animate={{ width: `${enemyMaxHp > 0 ? (enemyHp / enemyMaxHp) * 100 : 0}%` }} transition={{ type: 'spring', damping: 20, stiffness: 100 }} className="h-full bg-gradient-to-r from-red-600 to-red-400 relative z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
       </div>
       <div className="text-[7px] sm:text-[9px] font-black text-white/80 font-mono uppercase tracking-tighter mt-1">{enemyHp} / {enemyMaxHp} HP</div>
+      {renderEnemyPutrefBar()}
       {turnPhase !== 'executing' && renderActionButtons()}
     </div>
   );
