@@ -10,3 +10,4 @@ export * from './sets';
 export * from './items';
 export * from './quests';
 export * from './lore';
+export * from './putrefaccion';

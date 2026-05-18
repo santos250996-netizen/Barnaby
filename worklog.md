@@ -193,3 +193,28 @@ Stage Summary:
 - Cannot travel, fight, or enter dungeon until tutorial_4_piernas completed
 - Existing players (with any completed quests) auto-skip tutorial via migration
 - Files: quests.ts, types.ts, gameStore.ts, BarnabyGame.tsx, useNPC.ts
+---
+Task ID: 1
+Agent: main
+Task: Implement putrefaction combat system
+
+Work Log:
+- Explored full combat architecture (types, store, engine, UI, skills, items)
+- Created src/game/data/putrefaccion.ts with 7 mutation tables (basic/magic/defense/bleed/steal/ultimate/sacrifice), 4 states each (Fresco/Desgastado/Putrido/Necrotico)
+- Added PUTREFACCION_MAX=4, helper functions (getMutation, getPutrefaccionState, calcSelfDamage, enemyPutrefaccionDmg, enemyPutrefaccionReduction, slotName, createDefaultPutrefaccion)
+- Modified store/gameStore.ts: Added playerPutrefaccion (Record<string,number>) and enemyPutrefaccion (number) to CombatState, setPlayerPutrefaccion/setEnemyPutrefaccion actions, reset on startCombat/endCombat
+- Modified hooks/useCombatActions.ts: 
+  - executePlayerSkill now reads current putrefaction state, applies mutation (dmgMult, selfDmg, bonusBleed, bonusDebuff, bonusSteal, bonusHeal, infectEnemy, selfBleed), increments counter, logs state change, disables at 4
+  - executeNextAction checks playerPutrefaccion[slot] >= 4 instead of old durability
+  - endTurn processes enemy putrefaccion damage (2 dmg per point) 
+  - executeEnemySkill applies enemy putrefaccion damage reduction (-5% per point, max -30%)
+  - getPlayerSlotSkills updated to accept optional playerPutrefaccion param
+- Modified BarnabyGame.tsx: Added storePlayerPutrefaccion/storeEnemyPutrefaccion selectors, updated handleAction availability check, passed new props to EnemyCard
+- Rewrote EnemyCard.tsx: Skill buttons show putrefaction state via color-coded borders (gold/green/orange/red), glow effects, 4 dots below each button, hover tooltips showing mutation details and remaining uses, destroyed state (grayed out + X), enemy infection indicator
+
+Stage Summary:
+- Putrefaction system fully implemented with 7 skill-type mutation tables
+- 4 states: Fresco (normal), Desgastado (+35% dmg, -3% self), Putrido (+80% dmg, -7% self, bonus effects), Necrotico (+140% dmg, -12% self, infects enemy)
+- Enemy infection: each Necrotico skill use adds +1 enemy putrefaccion, causing 2 dmg/turn and -5% enemy damage per point
+- Per-combat reset (decision 1-A), lose skill only (2-A), no mid-combat repair (3-A), unique effects per state (4-B), enemy infection suffers only (5-C), diminishing feedback on reuse (6-B)
+- Build passes successfully

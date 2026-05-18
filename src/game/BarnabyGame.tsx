@@ -184,6 +184,8 @@ export default function App() {
   const storeEnemyMaxHp = useGameStore(s => s.enemyMaxHp);
   const storePieces = useGameStore(s => s.pieces);
   const storeCurrentActor = useGameStore(s => s.currentActor);
+  const storePlayerPutrefaccion = useGameStore(s => s.playerPutrefaccion);
+  const storeEnemyPutrefaccion = useGameStore(s => s.enemyPutrefaccion);
   // Zustand selectors for reward fields (written by useCombatActions.endCombat)
   const storeResources = useGameStore(s => s.resources);
   const storeInventory = useGameStore(s => s.inventory);
@@ -1387,8 +1389,9 @@ export default function App() {
     // Count available (non-worn-out) skills
     const availableSkills = getEquippedSkills().filter(sk => {
       const slot = findSkillSlot(sk);
-      const eq = slot ? (gameState.equipment as any)[slot] as EquipSlot | null : null;
-      return !eq || eq.putrefaccion !== 0;
+      if (!slot) return true;
+      const putrefLevel = storePlayerPutrefaccion?.[slot] || 0;
+      return putrefLevel < 4; // PUTREFACCION_MAX = 4
     });
     const availableCount = availableSkills.length;
 
@@ -2008,6 +2011,8 @@ export default function App() {
                         equippedSkills={getEquippedSkills()}
                         findSkillSlot={findSkillSlot}
                         equipment={gameState.equipment}
+                        playerPutrefaccion={storePlayerPutrefaccion}
+                        enemyPutrefaccion={storeEnemyPutrefaccion}
                         consumableSlots={gameState.consumableSlots || ['potion', null]}
                         potionCount={gameState.resources.potions}
                         onAction={handleAction}

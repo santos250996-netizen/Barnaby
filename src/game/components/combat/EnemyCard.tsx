@@ -1,10 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { TDB } from '@/game/data';
 import { EquipSlot } from '@/game/types';
 import { Technique } from '@/game/data/types';
+import { getPutrefaccionState, getMutation, PUTREFACCION_MAX, slotName } from '@/game/data/putrefaccion';
 
 const ENEMY_IMAGES: Record<string, string> = {
   'Trasgo Tontin': '/game/enemies/enemy-trasgo-tontin.png',
@@ -12,20 +13,20 @@ const ENEMY_IMAGES: Record<string, string> = {
   'Goblin': '/game/enemies/enemy-goblin.png',
   'Serpiente': '/game/enemies/enemy-serpiente.png',
   'Jabalí': '/game/enemies/enemy-jabali.png',
-  '👑 Rey Trasgo': '/game/enemies/enemy-rey-trasgo.png',
-  '🕺 Rattlebones': '/game/enemies/enemy-rattlebones.png',
+  'Rey Trasgo': '/game/enemies/enemy-rey-trasgo.png',
+  'Rattlebones': '/game/enemies/enemy-rattlebones.png',
   'Esqueleto Guerrero': '/game/enemies/enemy-esqueleto-guerrero.png',
   'Fantasma': '/game/enemies/enemy-fantasma.png',
   'Momia': '/game/enemies/enemy-momia.png',
   'Gusano de Cripta': '/game/enemies/enemy-gusano-cripta.png',
   'Nigromante': '/game/enemies/enemy-nigromante.png',
-  '👑 Reina Espectral': '/game/enemies/enemy-reina-espectral.png',
-  'Buitre Carroñero': '/game/enemies/enemy-buitre-carronero.png',
-  'Hombre Escorpión': '/game/enemies/enemy-hombre-escorpion.png',
-  'Nómada Sombrío': '/game/enemies/enemy-nomada-sombrio.png',
+  'Reina Espectral': '/game/enemies/enemy-reina-espectral.png',
+  'Buitre Carronero': '/game/enemies/enemy-buitre-carronero.png',
+  'Hombre Escorpion': '/game/enemies/enemy-hombre-escorpion.png',
+  'Nomada Sombrio': '/game/enemies/enemy-nomada-sombrio.png',
   'Golem de Arena': '/game/enemies/enemy-golem-arena.png',
   'Espectro del Desierto': '/game/enemies/enemy-espectro-desierto.png',
-  '👑 Faraón Maldito': '/game/enemies/enemy-faraon-maldito.png',
+  'Faraon Maldito': '/game/enemies/enemy-faraon-maldito.png',
 };
 
 interface EnemyCardProps {
@@ -40,6 +41,8 @@ interface EnemyCardProps {
   equippedSkills: string[];
   findSkillSlot: (skillId: string) => string | null;
   equipment: Record<string, EquipSlot | null>;
+  playerPutrefaccion?: Record<string, number>;
+  enemyPutrefaccion?: number;
   consumableSlots: (string | null)[];
   potionCount: number;
   onAction: (techName: string) => void;
@@ -62,6 +65,8 @@ export function EnemyCard({
   equippedSkills,
   findSkillSlot,
   equipment,
+  playerPutrefaccion,
+  enemyPutrefaccion,
   consumableSlots,
   potionCount,
   onAction,
@@ -72,8 +77,103 @@ export function EnemyCard({
   currentActor,
 }: EnemyCardProps) {
   const img = enemy?.name ? ENEMY_IMAGES[enemy.name] : null;
+  const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
 
-  // Render combat action buttons (shared between image/no-image variants)
+  const getSkillPutref = (skillId: string) => {
+    const slot = findSkillSlot(skillId);
+    if (!slot || !playerPutrefaccion) return { level: 0, pState: getPutrefaccionState(0), isDestroyed: false };
+    const level = playerPutrefaccion[slot] || 0;
+    return { level, pState: getPutrefaccionState(level), isDestroyed: level >= PUTREFACCION_MAX };
+  };
+
+  const renderSkillButton = (sk: string, idx: number) => {
+    const t = (TDB as any)[sk];
+    const slot = findSkillSlot(sk);
+    const { level, pState, isDestroyed } = getSkillPutref(sk);
+    const mutation = t ? getMutation(t.type, level) : null;
+    const isSelected = playerActionOrder.includes(sk);
+    const isHovered = hoveredSkill === sk;
+    const canInteract = !isDestroyed && !isSelected;
+
+    let btnClass = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden transition-all relative ';
+    if (isDestroyed) {
+      btnClass += 'bg-black/70 border-2 border-gray-500/30 opacity-40 cursor-not-allowed';
+    } else if (isSelected) {
+      btnClass += 'bg-black/70 border-2 border-yellow-400 cursor-default';
+    } else {
+      btnClass += 'bg-black/70 border-2';
+    }
+
+    const glowStyle = (!isDestroyed && !isSelected && level > 0) ? (() => {
+      if (level === 3) return { borderColor: '#dc2626', boxShadow: '0 0 18px rgba(220,38,38,0.8)' };
+      if (level === 2) return { borderColor: '#f97316', boxShadow: '0 0 14px rgba(249,115,22,0.6)' };
+      if (level === 1) return { borderColor: '#a3e635', boxShadow: '0 0 10px rgba(163,230,53,0.4)' };
+      return { borderColor: '#d4943a', boxShadow: undefined };
+    })() : undefined;
+
+    const imgClass = ['w-full h-full object-cover'];
+    if (isDestroyed) imgClass.push('grayscale');
+    if (isSelected) imgClass.push('brightness-125 saturate-150');
+
+    const showTooltip = isHovered && !isDestroyed && level > 0 && mutation;
+    const showDestroyedTooltip = isHovered && isDestroyed;
+
+    return (
+      <div key={sk + idx} className="relative">
+        <motion.button
+          whileHover={canInteract ? { scale: 1.1 } : undefined}
+          whileTap={canInteract ? { scale: 0.9 } : undefined}
+          onClick={(e) => { e.stopPropagation(); if (canInteract) onAction(sk); }}
+          onMouseEnter={() => setHoveredSkill(sk)}
+          onMouseLeave={() => setHoveredSkill(null)}
+          className={btnClass}
+          style={glowStyle}
+        >
+          {t?.icon
+            ? <img src={t.icon} alt="" className={imgClass.join(' ')} loading="lazy" />
+            : <span className="text-lg sm:text-xl">{t?.emoji || '?'}</span>
+          }
+          {isDestroyed && <span className="absolute bottom-0 right-0 text-[6px] bg-red-900 text-white px-0.5">X</span>}
+          {isSelected && (
+            <span className="absolute -top-1 -right-1 text-[8px] font-black text-yellow-300" style={{ textShadow: '0 0 4px rgba(250,204,21,0.8)' }}>
+              {playerActionOrder.indexOf(sk) + 1}
+            </span>
+          )}
+          {!isDestroyed && level > 0 && (
+            <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-px">
+              {[0, 1, 2, 3].map(i => (
+                <div
+                  key={i}
+                  className="w-1 h-1 rounded-full"
+                  style={{ backgroundColor: i < level ? pState.color : 'rgba(255,255,255,0.2)' }}
+                />
+              ))}
+            </div>
+          )}
+        </motion.button>
+        {showTooltip && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+            <div className="bg-black/90 border rounded-lg px-2 py-1 text-[7px] sm:text-[8px] whitespace-nowrap" style={{ borderColor: pState.color }}>
+              <div className="font-black" style={{ color: pState.color }}>
+                {pState.emoji} {slotName(slot || '')} - {pState.name}
+              </div>
+              {mutation.logDesc && <div className="text-white/70 mt-0.5">{mutation.logDesc}</div>}
+              <div className="text-white/40 mt-0.5">Usos restantes: {PUTREFACCION_MAX - level}</div>
+            </div>
+          </div>
+        )}
+        {showDestroyedTooltip && (
+          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+            <div className="bg-black/90 border border-red-500/50 rounded-lg px-2 py-1 text-[7px] sm:text-[8px] whitespace-nowrap">
+              <div className="font-black text-red-400">{slotName(slot || '')} DESTRUIDA</div>
+              <div className="text-white/50">Skill perdida este combate</div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderActionButtons = () => (
     <div className="absolute bottom-16 right-3 flex flex-col-reverse gap-2 z-30">
       {combatMenu === 'main' ? (
@@ -105,35 +205,12 @@ export function EnemyCard({
         </>
       ) : combatMenu === 'skills' ? (
         <>
-          {equippedSkills.map((sk, idx) => {
-            const t = (TDB as any)[sk];
-            const slot = findSkillSlot(sk);
-            const eq = slot ? (equipment as any)[slot] as EquipSlot | null : null;
-            const isWornOut = eq && eq.putrefaccion === 0;
-            const isSelected = playerActionOrder.includes(sk);
-            return (
-              <motion.button
-                key={sk + idx}
-                whileHover={!isWornOut && !isSelected ? { scale: 1.1 } : {}}
-                whileTap={!isWornOut && !isSelected ? { scale: 0.9 } : {}}
-                onClick={(e) => { e.stopPropagation(); if (!isWornOut && !isSelected) onAction(sk); }}
-                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden transition-all relative ${
-                  isWornOut
-                    ? 'bg-black/70 border-2 border-gray-500/30 opacity-40 cursor-not-allowed'
-                    : isSelected
-                      ? 'bg-black/70 border-2 border-yellow-400 shadow-[0_0_18px_rgba(250,204,21,0.7),0_0_6px_rgba(250,204,21,0.4)_inset] cursor-default'
-                      : t?.type === 'sacrifice'
-                        ? 'bg-black/70 border-2 border-red-400/50 shadow-[0_0_12px_rgba(248,113,113,0.3)] hover:border-red-400'
-                        : 'bg-black/70 border-2 border-accent/50 shadow-[0_0_12px_rgba(212,148,58,0.3)] hover:border-accent'
-                }`}
-              >
-                {t?.icon ? <img src={t.icon} alt="" className={`w-full h-full object-cover ${isWornOut ? 'grayscale' : ''} ${isSelected ? 'brightness-125 saturate-150' : ''}`} loading="lazy" /> : <span className="text-lg sm:text-xl">{t?.emoji || '❓'}</span>}
-                {isWornOut && <span className="absolute bottom-0 right-0 text-[6px] bg-red-900 text-white px-0.5">✕</span>}
-                {isSelected && <span className="absolute -top-1 -right-1 text-[8px] font-black text-yellow-300 drop-shadow-[0_0_4px_rgba(250,204,21,0.8)]">{playerActionOrder.indexOf(sk) + 1}</span>}
-              </motion.button>
-            );
-          })}
-
+          {equippedSkills.map((sk, idx) => renderSkillButton(sk, idx))}
+          {enemyPutrefaccion && enemyPutrefaccion > 0 && (
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 flex items-center gap-1 bg-black/80 border border-green-500/30 rounded-full px-2 py-0.5 z-40">
+              <span className="text-[7px] font-black text-green-400">INFECCION {enemyPutrefaccion}</span>
+            </div>
+          )}
         </>
       ) : (
         <>
@@ -149,7 +226,7 @@ export function EnemyCard({
                   disabled={potionCount === 0}
                   className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/70 border-2 border-green-400/50 flex flex-col items-center justify-center shadow-[0_0_12px_rgba(74,222,128,0.3)] hover:border-green-400 disabled:opacity-30 transition-all"
                 >
-                  <span className="text-lg sm:text-xl">🧪</span>
+                  <span className="text-lg sm:text-xl">Potion</span>
                   <span className="text-[6px] sm:text-[7px] font-black text-green-300 uppercase leading-none mt-0.5">x{potionCount}</span>
                 </motion.button>
               );
@@ -163,7 +240,7 @@ export function EnemyCard({
                   onClick={(e) => { e.stopPropagation(); onUseConsumable(slotIdx); setCombatMenu('main'); }}
                   className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/70 border-2 border-accent/50 flex flex-col items-center justify-center shadow-[0_0_12px_rgba(212,148,58,0.3)] hover:border-accent transition-all"
                 >
-                  <span className="text-lg sm:text-xl">📦</span>
+                  <span className="text-lg sm:text-xl">Item</span>
                   <span className="text-[5px] sm:text-[6px] font-black text-accent/80 uppercase leading-none mt-0.5">{slotItem}</span>
                 </motion.button>
               );
@@ -174,7 +251,7 @@ export function EnemyCard({
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/70 border-2 border-gray-500/30 flex flex-col items-center justify-center opacity-30"
                 disabled
               >
-                <span className="text-lg">➖</span>
+                <span className="text-lg">-</span>
               </motion.button>
             );
           })}
@@ -183,7 +260,6 @@ export function EnemyCard({
     </div>
   );
 
-  // Render enemy intent — 4 circles with skill icons + abbreviated text (top-left)
   const renderIntentBadge = () => (
     <div className="absolute top-2 left-2 z-20">
       {enemyActions.length > 0 ? (
@@ -199,20 +275,18 @@ export function EnemyCard({
             return (
               <div
                 key={idx}
-                className={`flex flex-col items-center transition-all ${
-                  isDone ? 'opacity-25' : ''
-                }`}
+                className={`flex flex-col items-center transition-all ${isDone ? 'opacity-25' : ''}`}
               >
                 <motion.div
                   animate={isExecuting ? { scale: [1, 1.15, 1] } : {}}
                   transition={isExecuting ? { duration: 0.8, repeat: Infinity } : {}}
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 relative ${
+                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 relative flex items-center justify-center bg-black/70 ${
                     isExecuting
                       ? 'border-red-500 shadow-[0_0_14px_rgba(220,38,38,0.7)]'
                       : hasMaster
                         ? 'border-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.5)]'
                         : 'border-white/20 shadow-[0_0_6px_rgba(0,0,0,0.5)]'
-                  } bg-black/70`}
+                  }`}
                 >
                   {skillIcon ? (
                     <img src={skillIcon} alt="" className="w-full h-full object-cover" loading="lazy" />
@@ -220,7 +294,7 @@ export function EnemyCard({
                     <span className={`text-sm sm:text-base flex items-center justify-center w-full h-full ${isExecuting ? 'animate-pulse' : ''}`}>{action.icon}</span>
                   )}
                   {hasMaster && !isDone && (
-                    <span className="absolute -top-0.5 -right-0.5 text-[7px] text-yellow-300 drop-shadow-[0_0_3px_rgba(234,179,8,0.9)]">★</span>
+                    <span className="absolute -top-0.5 -right-0.5 text-[7px] text-yellow-300" style={{ textShadow: '0 0 3px rgba(234,179,8,0.9)' }}>*</span>
                   )}
                 </motion.div>
                 <div className={`mt-0.5 text-center leading-none ${isDone ? 'opacity-40' : ''}`}>
@@ -250,8 +324,6 @@ export function EnemyCard({
     </div>
   );
 
-  // Render player execution mirror — mini icons at top-right, only during execution phase
-  // This is a read-only visual mirror of the skill buttons, not a separate intent system
   const renderPlayerExecutionMirror = () => {
     if (turnPhase !== 'executing' || !playerActionOrder || playerActionOrder.length === 0) return null;
     return (
@@ -281,7 +353,7 @@ export function EnemyCard({
                 }`}
               >
                 {isEmpty ? (
-                  <span className="text-[9px] sm:text-[10px] text-white/20 font-black">—</span>
+                  <span className="text-[9px] sm:text-[10px] text-white/20 font-black">-</span>
                 ) : skillIcon ? (
                   <img src={skillIcon} alt="" className={`w-full h-full object-cover ${isExecuting ? 'brightness-130 saturate-150' : isDone ? 'brightness-50' : ''}`} loading="lazy" />
                 ) : (
@@ -295,7 +367,6 @@ export function EnemyCard({
     );
   };
 
-  // Render HP bar (shared)
   const renderHpBar = (large: boolean) => (
     <>
       <div className={`w-${large ? '4/5' : 'full'} h-${large ? '1.5 sm:h-2' : '2 sm:h-2.5'} bg-black/60 border border-danger/30 p-[1px] relative overflow-hidden${large ? ' mt-2' : ''}`}>
@@ -309,14 +380,12 @@ export function EnemyCard({
   );
 
   if (img) {
-    // Enemy WITH image
     return (
       <div className="relative w-full h-full border-2 border-danger/50 overflow-hidden shadow-[0_0_16px_rgba(220,38,38,0.3)]" onClick={() => combatMenu !== 'main' && setCombatMenu('main')}>
         <img src={img} alt={enemy?.name} className="w-full h-full object-cover min-h-[300px]" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
         {renderIntentBadge()}
         {renderPlayerExecutionMirror()}
-        {/* Name + HP - bottom */}
         <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 space-y-1">
           <div className="text-white font-display font-black text-sm sm:text-base uppercase tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
             {enemy?.name}
@@ -334,7 +403,6 @@ export function EnemyCard({
     );
   }
 
-  // Enemy WITHOUT image (emoji fallback)
   return (
     <div className="relative w-full h-full border-2 border-danger/50 overflow-hidden bg-[#1a1428] shadow-[0_0_16px_rgba(220,38,38,0.3)] flex flex-col items-center justify-center min-h-[300px]" onClick={() => combatMenu !== 'main' && setCombatMenu('main')}>
       {renderIntentBadge()}

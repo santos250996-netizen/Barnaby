@@ -90,6 +90,9 @@ export interface CombatState {
   turnNumber: number;               // for speed tie alternation
   tempBuffs: TempBuffs;             // temporary buffs for this turn only
   currentActor: 'player' | 'enemy' | null;  // who is currently executing their action
+  // ── Putrefacción por combate ──
+  playerPutrefaccion: Record<string, number>;  // head/torso/arms/legs → 0-4
+  enemyPutrefaccion: number;                   // putrefacción acumulada del enemigo (infección)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -169,6 +172,10 @@ export interface GameActions {
   setTempBuffs: (buffs: TempBuffs) => void;
   setCurrentActor: (actor: 'player' | 'enemy' | null) => void;
 
+  // Putrefacción actions
+  setPlayerPutrefaccion: (putref: Record<string, number>) => void;
+  setEnemyPutrefaccion: (level: number) => void;
+
   // UI actions
   setActivePanel: (panel: string | null) => void;
   addToast: (msg: string, type?: Toast['type']) => void;
@@ -224,6 +231,9 @@ const DEFAULT_COMBAT: CombatState = {
   turnNumber: 0,
   tempBuffs: { ...DEFAULT_TEMP_BUFFS },
   currentActor: null,
+  // ── Putrefacción por combate ──
+  playerPutrefaccion: { head: 0, torso: 0, arms: 0, legs: 0 },
+  enemyPutrefaccion: 0,
 };
 
 const DEFAULT_UI: UIState = {
@@ -412,6 +422,9 @@ export const useGameStore = create<GameStore>()(
           currentActionSlot: 0,
           turnNumber: 0,
           tempBuffs: { ...DEFAULT_TEMP_BUFFS },
+          // ── Putrefacción reset por combate ──
+          playerPutrefaccion: { head: 0, torso: 0, arms: 0, legs: 0 },
+          enemyPutrefaccion: 0,
         })),
 
       endCombat: () =>
@@ -454,6 +467,10 @@ export const useGameStore = create<GameStore>()(
       setTurnNumber: (num) => set({ turnNumber: num }),
       setTempBuffs: (buffs) => set({ tempBuffs: buffs }),
       setCurrentActor: (actor) => set({ currentActor: actor }),
+
+      // ── Putrefacción ──
+      setPlayerPutrefaccion: (putref) => set({ playerPutrefaccion: putref }),
+      setEnemyPutrefaccion: (level) => set({ enemyPutrefaccion: level }),
 
       // ══════════════════════════════════════════
       // UI Actions

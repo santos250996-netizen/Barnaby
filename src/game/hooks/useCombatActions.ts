@@ -6,6 +6,9 @@ import {
   TDB, ENM, QST, LOC, SETS, RARITY_CONFIG,
   getItemData, rollRarity, scaleStat,
   SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex,
+  getMutation, getPutrefaccionState, calcSelfDamage,
+  enemyPutrefaccionDmg, enemyPutrefaccionReduction, slotName,
+  PUTREFACCION_MAX, type PutrefaccionMutation,
 } from '../constants';
 import type { Rarity } from '../constants';
 import type { CombatFx, LogEntry, InventoryItem, EquipSlot, TempBuffs } from '../types';
@@ -149,7 +152,10 @@ function findSkillSlotLocal(techName: string, equipment: Record<string, EquipSlo
 }
 
 /** Get the default skill for each equipment slot (one skill per slot, 4 slots total) */
-export function getPlayerSlotSkills(equipment: Record<string, EquipSlot | null>): {
+export function getPlayerSlotSkills(
+  equipment: Record<string, EquipSlot | null>,
+  playerPutrefaccion?: Record<string, number>,
+): {
   slotKey: string;
   skillId: string;
   putrefaccion: number;
@@ -164,13 +170,16 @@ export function getPlayerSlotSkills(equipment: Record<string, EquipSlot | null>)
   return slots.map(({ slotKey, defaultSkill }) => {
     const eq = equipment[slotKey];
     let skillId = defaultSkill;
-    let putrefaccion = -1;
+    let putrefaccion = 0;
     let isAvailable = true;
     if (eq && eq.id) {
       const data = getItemData(eq.id);
       if (data?.skillIds && data.skillIds.length > 0) skillId = data.skillIds[0];
-      putrefaccion = eq.putrefaccion;
-      isAvailable = eq.putrefaccion > 0;
+    }
+    // Use combat putrefacción (per-combat) if available
+    if (playerPutrefaccion && playerPutrefaccion[slotKey] !== undefined) {
+      putrefaccion = playerPutrefaccion[slotKey];
+      isAvailable = putrefaccion < PUTREFACCION_MAX;
     }
     return { slotKey, skillId, putrefaccion, isAvailable };
   });
@@ -224,6 +233,8 @@ export function useCombatActions() {
   const setTurnNumber = useGameStore(s => s.setTurnNumber);
   const setTempBuffs = useGameStore(s => s.setTempBuffs);
   const setCurrentActor = useGameStore(s => s.setCurrentActor);
+  const setPlayerPutrefaccion = useGameStore(s => s.setPlayerPutrefaccion);
+  const setEnemyPutrefaccion = useGameStore(s => s.setEnemyPutrefaccion);
 
   const playerStunCountRef = useRef(0);
   const enemyStunCountRef = useRef(0);
@@ -374,6 +385,13 @@ export function useCombatActions() {
     const playerMag = computeMagic(state.equipment);
     const crit = computeCrit(state.resources.crit, state.equipment);
     const combatFx = state.combatFx || DEFAULT_COMBAT_FX;
+    const maxP = computeMaxPieces(state.maxPieces, state.equipment);
+
+    // ── PUTREFACCIÓN: Obtener mutación ──
+    const skillSlot = findSkillSlotLocal(skillId, state.equipment);
+    const currentPutref = (skillSlot && state.playerPutrefaccion) ? (state.playerPutrefaccion[skillSlot] || 0) : 0;
+    const mutation = getMutation(tech.type, currentPutref);
+    const pState = getPutrefaccionState(currentPutref);
 
     let dmg: number;
     if (isMagicSkill) {
@@ -395,6 +413,11 @@ export function useCombatActions() {
       addCombatLog({ text: `¡Escudo enemigo! Daño reducido a ${dmg}`, type: 'effect' });
     }
     if (tech.fury) dmg = Math.floor(dmg * 1.5);
+
+    // ── PUTREFACCIÓN: Aplicar multiplicador de daño ──
+    if (mutation.dmgMult !== 1.0) {
+      dmg = Math.floor(dmg * mutation.dmgMult);
+    }
 
     const isCrit = Math.random() * 100 < (crit + tempBuffs.playerCrit) || state.storyFlags.nextCrit;
     if (isCrit) {
@@ -419,23 +442,79 @@ export function useCombatActions() {
 
     playSound(isPhys ? 'attack' : 'magic');
 
-    // Putrefacción
-    const skillSlot = findSkillSlotLocal(skillId, state.equipment);
-    if (skillSlot) {
-      setGameState(prev => {
-        const newEquip = { ...prev.equipment };
-        const eq = (newEquip as any)[skillSlot] as EquipSlot | null;
-        if (eq) {
-          const newP = Math.max(0, eq.putrefaccion - 1);
-          if (newP <= 0) {
-            (newEquip as any)[skillSlot] = { ...eq, putrefaccion: 0 };
-            addCombatLog({ text: `⚠️ ¡${eq.id} no tiene más usos!`, type: 'effect' });
-          } else {
-            (newEquip as any)[skillSlot] = { ...eq, putrefaccion: newP };
-          }
-        }
-        return { ...prev, equipment: newEquip };
-      });
+    // ── PUTREFACCIÓN: Self-damage ──
+    if (mutation.selfDmgPercent > 0) {
+      const selfDmg = calcSelfDamage(mutation.selfDmgPercent, maxP);
+      setGameState(prev => ({ ...prev, pieces: Math.max(1, prev.pieces - selfDmg) }));
+      addCombatLog({ text: `☠️ Putrefacción (${pState.name}): -${selfDmg} piezas`, type: 'effect' });
+    }
+
+    // ── PUTREFACCIÓN: Self-bleed ──
+    if (mutation.selfBleed && mutation.selfBleed > 0) {
+      updateCombatFx({ playerBleed: true, playerBleedTurns: 999, playerBleedDmg: mutation.selfBleed });
+      addCombatLog({ text: `☠️ Auto-sangrado: -${mutation.selfBleed} piezas/turno`, type: 'effect' });
+    }
+
+    // ── PUTREFACCIÓN: Bonus bleed al enemigo ──
+    if (mutation.bonusBleed && mutation.bonusBleed > 0) {
+      const currentBleed = combatFx.enemyBleed || 0;
+      const newBleed = Math.max(currentBleed, mutation.bonusBleed);
+      updateCombatFx({ enemyBleed: newBleed, enemyBleedTurns: 999 });
+      addCombatLog({ text: `🩸 Sangrado putrefacto: -${newBleed}/turno`, type: 'effect' });
+      triggerCombatVfx('bleed', 'enemy');
+      playSound('bleed');
+    }
+
+    // ── PUTREFACCIÓN: Bonus debuff al enemigo ──
+    if (mutation.bonusDebuff) {
+      updateCombatFx({ enemyDebuff: true, enemyDebuffTurns: 2 });
+      addCombatLog({ text: `💨 Desconcertado por putrefacción`, type: 'effect' });
+      triggerCombatVfx('debuff', 'enemy');
+      playSound('debuff');
+    }
+
+    // ── PUTREFACCIÓN: Bonus steal ──
+    if (mutation.bonusStealPct && mutation.bonusStealPct > 0 && tech.steal) {
+      const extraSteal = Math.max(1, Math.floor(tech.steal * mutation.bonusStealPct));
+      const stolen = Math.min(extraSteal + tech.steal, state.resources.shards);
+      if (stolen > 0) {
+        setGameState(prev => ({ ...prev, resources: { ...prev.resources, shards: Math.max(0, prev.resources.shards - stolen) } }));
+        addCombatLog({ text: `💰 Robo putrefacto: -${stolen} fragmentos`, type: 'effect' });
+      }
+    }
+
+    // ── PUTREFACCIÓN: Bonus heal ──
+    if (mutation.bonusHeal && mutation.bonusHeal > 0) {
+      const healAmt = mutation.bonusHeal;
+      setGameState(prev => ({ ...prev, pieces: Math.min(maxP, prev.pieces + healAmt) }));
+      triggerFloatingNumber(`+${healAmt}`, 'heal');
+      addCombatLog({ text: `💚 Regeneración pútrida: +${healAmt} piezas`, type: 'effect' });
+      triggerCombatVfx('heal', 'player');
+    }
+
+    // ── PUTREFACCIÓN: Infección al enemigo ──
+    if (mutation.infectEnemy) {
+      const newEnemyPutref = (state.enemyPutrefaccion || 0) + 1;
+      setEnemyPutrefaccion(newEnemyPutref);
+      addCombatLog({ text: `🦠 ¡INFECCIÓN! El enemigo sufre putrefacción (${newEnemyPutref})`, type: 'effect' });
+      triggerCombatVfx('debuff', 'enemy');
+    }
+
+    // ── PUTREFACCIÓN: Incrementar counter + log ──
+    if (skillSlot && state.playerPutrefaccion) {
+      const newPutref = { ...state.playerPutrefaccion };
+      newPutref[skillSlot] = (newPutref[skillSlot] || 0) + 1;
+      setPlayerPutrefaccion(newPutref);
+
+      if (mutation.logTag) {
+        addCombatLog({ text: `${pState.emoji} [${slotName(skillSlot)} → ${pState.name}] ${mutation.logDesc}`, type: 'effect' });
+      }
+
+      // Skill destruida (llegó a 4)
+      if (newPutref[skillSlot] >= PUTREFACCION_MAX) {
+        addCombatLog({ text: `💀 ¡${slotName(skillSlot)} se ha destruido! La skill se pierde.`, type: 'effect' });
+        triggerCombatVfx('explosion', 'player');
+      }
     }
 
     // Lifesteal
@@ -575,6 +654,13 @@ export function useCombatActions() {
       // Only add temp buffs here, do NOT subtract defense again
       let dmg = intent.value + tempBuffs.enemyAtk;
       if (combatFx.enemyDebuff && combatFx.enemyDebuffTurns > 0) dmg = Math.floor(dmg * 0.7);
+      // ── PUTREFACCIÓN ENEMIGA: Reducción de daño ──
+      if (state.enemyPutrefaccion && state.enemyPutrefaccion > 0) {
+        const reduction = enemyPutrefaccionReduction(state.enemyPutrefaccion);
+        if (reduction > 0) {
+          dmg = Math.floor(dmg * (1 - reduction / 100));
+        }
+      }
       if (skillData?.armorPen) {
         if (combatFx.playerShield) dmg = Math.floor(dmg * (0.5 + skillData.armorPen * 0.5));
         if (combatFx.playerGuard) dmg = Math.floor(dmg * (0.5 + skillData.armorPen * 0.5));
@@ -679,6 +765,16 @@ export function useCombatActions() {
       addCombatLog({ text: `Veneno: -${combatFx.enemyPoison}`, type: 'effect' });
     }
     
+    // ── PUTREFACCIÓN ENEMIGA: Daño por infección ──
+    if (state.enemyPutrefaccion && state.enemyPutrefaccion > 0) {
+      const infDmg = enemyPutrefaccionDmg(state.enemyPutrefaccion);
+      if (infDmg > 0) {
+        const newHp = Math.max(0, state.enemyHp - infDmg);
+        setEnemyHp(newHp);
+        addCombatLog({ text: `🦠 Putrefacción del enemigo (${state.enemyPutrefaccion}): -${infDmg}`, type: 'effect' });
+      }
+    }
+    
     // Player bleed/poison tick — permanent until combat ends or cleansed
     if (combatFx.playerBleed && combatFx.playerBleedDmg > 0) {
       setGameState(prev => ({ ...prev, pieces: Math.max(0, prev.pieces - combatFx.playerBleedDmg) }));
@@ -781,9 +877,9 @@ export function useCombatActions() {
         updateCombatFx({ playerFrozen: false });
       } else {
         const skillSlot = findSkillSlotLocal(playerSkillId, state.equipment);
-        if (skillSlot) {
-          const eq = (state.equipment as any)[skillSlot] as EquipSlot | null;
-          if (eq && eq.putrefaccion === 0) playerCanAct = false;
+        if (skillSlot && state.playerPutrefaccion) {
+          const putrefLevel = state.playerPutrefaccion[skillSlot] || 0;
+          if (putrefLevel >= PUTREFACCION_MAX) playerCanAct = false;
         }
       }
     }
