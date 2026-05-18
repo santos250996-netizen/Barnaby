@@ -250,87 +250,44 @@ export function EnemyCard({
     </div>
   );
 
-  // Render player intent — 4 circles with skill icons + abbreviated text (top-right)
-  const renderPlayerIntent = () => {
-    if (!playerActionOrder || playerActionOrder.length === 0) return null;
+  // Render player execution mirror — mini icons at top-right, only during execution phase
+  // This is a read-only visual mirror of the skill buttons, not a separate intent system
+  const renderPlayerExecutionMirror = () => {
+    if (turnPhase !== 'executing' || !playerActionOrder || playerActionOrder.length === 0) return null;
     return (
       <div className="absolute top-2 right-2 z-20">
         <div className="flex flex-row gap-1">
           {[0, 1, 2, 3].map(idx => {
             const skillId = playerActionOrder[idx];
             const tech = skillId && skillId !== '' ? (TDB as Record<string, Technique>)[skillId] : null;
-            const isExecuting = turnPhase === 'executing' && currentActionSlot === idx && currentActor === 'player';
-            const isDone = turnPhase === 'executing' && currentActionSlot > idx;
+            const isExecuting = currentActionSlot === idx && currentActor === 'player';
+            const isDone = currentActionSlot > idx;
             const isEmpty = !tech;
             const skillIcon = tech?.icon || null;
-            const isSacrifice = tech?.type === 'sacrifice';
-
-            // Abbreviated text
-            let shortName = tech?.name || '';
-            let shortValue = '';
-            if (tech) {
-              if (tech.damage > 0) shortValue = tech.damageRange || `${tech.damage}`;
-              else if (tech.type === 'sacrifice') shortValue = 'SAC';
-              else if (tech.shield) shortValue = tech.heal > 0 ? 'ESC+CURA' : 'ESC';
-              else if (tech.fury) shortValue = 'BUF';
-              else if (tech.heal > 0) shortValue = 'CURA';
-              else shortValue = 'BUF';
-            }
 
             return (
-              <div
+              <motion.div
                 key={idx}
-                className={`flex flex-col items-center transition-all duration-300 ${
-                  isDone ? 'opacity-25 scale-90' : ''
+                animate={isExecuting ? { scale: [1, 1.18, 1] } : {}}
+                transition={isExecuting ? { duration: 0.7, repeat: Infinity } : {}}
+                className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full overflow-hidden border-2 relative flex items-center justify-center bg-black/70 transition-all duration-300 ${
+                  isEmpty
+                    ? 'border-white/15 opacity-30'
+                    : isExecuting
+                      ? 'border-[#d4943a] shadow-[0_0_14px_rgba(212,148,58,0.8),0_0_4px_rgba(212,148,58,0.5)_inset]'
+                      : isDone
+                        ? 'border-white/15 opacity-25'
+                        : 'border-[#d4943a]/40 shadow-[0_0_6px_rgba(212,148,58,0.3)]'
                 }`}
               >
-                <motion.div
-                  animate={isExecuting ? { scale: [1, 1.18, 1] } : {}}
-                  transition={isExecuting ? { duration: 0.7, repeat: Infinity } : {}}
-                  className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full overflow-hidden border-2 relative flex items-center justify-center ${
-                    isEmpty
-                      ? 'border-white/25 bg-black/70'
-                      : isExecuting
-                        ? 'border-[#d4943a] shadow-[0_0_14px_rgba(212,148,58,0.8),0_0_4px_rgba(212,148,58,0.5)_inset] bg-black/70'
-                        : isSacrifice
-                          ? 'border-red-400/60 shadow-[0_0_10px_rgba(248,113,113,0.5)] bg-black/70'
-                          : 'border-[#d4943a]/50 shadow-[0_0_8px_rgba(212,148,58,0.4)] bg-black/70'
-                  }`}
-                >
-                  {isEmpty ? (
-                    <span className="text-[10px] sm:text-xs text-white/25 font-black">{idx + 1}</span>
-                  ) : skillIcon ? (
-                    <img src={skillIcon} alt="" className={`w-full h-full object-cover ${isExecuting ? 'brightness-130 saturate-150' : ''}`} loading="lazy" />
-                  ) : (
-                    <span className={`text-sm sm:text-base ${isExecuting ? 'animate-pulse' : ''}`}>{tech?.emoji || '?'}</span>
-                  )}
-                  {!isEmpty && turnPhase === 'planning' && (
-                    <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#d4943a] text-[7px] text-black font-black flex items-center justify-center shadow-[0_0_4px_rgba(0,0,0,0.8)]">
-                      {idx + 1}
-                    </span>
-                  )}
-                </motion.div>
-                <div className="mt-0.5 text-center leading-none">
-                  {!isEmpty ? (
-                    <>
-                      <div className={`text-[5px] sm:text-[7px] font-black tracking-tight truncate max-w-[32px] sm:max-w-[40px] ${
-                        isExecuting ? 'text-[#d4943a]' : isSacrifice ? 'text-red-300' : 'text-white/90'
-                      }`}>
-                        {shortName}
-                      </div>
-                      {shortValue && (
-                        <div className={`text-[5px] sm:text-[7px] font-black ${
-                          isExecuting ? 'text-[#d4943a] animate-pulse' : isSacrifice ? 'text-red-300/80' : 'text-white/60'
-                        }`}>
-                          {shortValue}
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-[5px] sm:text-[6px] text-white/20 font-bold">—</div>
-                  )}
-                </div>
-              </div>
+                {isEmpty ? (
+                  <span className="text-[9px] sm:text-[10px] text-white/20 font-black">—</span>
+                ) : skillIcon ? (
+                  <img src={skillIcon} alt="" className={`w-full h-full object-cover ${isExecuting ? 'brightness-130 saturate-150' : isDone ? 'brightness-50' : ''}`} loading="lazy" />
+                ) : (
+                  <span className={`text-xs sm:text-sm ${isExecuting ? 'animate-pulse' : isDone ? 'opacity-40' : ''}`}>{tech?.emoji || '?'}</span>
+                )}
+              </motion.div>
             );
           })}
         </div>
@@ -358,7 +315,7 @@ export function EnemyCard({
         <img src={img} alt={enemy?.name} className="w-full h-full object-cover min-h-[300px]" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
         {renderIntentBadge()}
-        {renderPlayerIntent()}
+        {renderPlayerExecutionMirror()}
         {/* Name + HP - bottom */}
         <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 space-y-1">
           <div className="text-white font-display font-black text-sm sm:text-base uppercase tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
@@ -381,7 +338,7 @@ export function EnemyCard({
   return (
     <div className="relative w-full h-full border-2 border-danger/50 overflow-hidden bg-[#1a1428] shadow-[0_0_16px_rgba(220,38,38,0.3)] flex flex-col items-center justify-center min-h-[300px]" onClick={() => combatMenu !== 'main' && setCombatMenu('main')}>
       {renderIntentBadge()}
-      {renderPlayerIntent()}
+      {renderPlayerExecutionMirror()}
       <div className="text-4xl sm:text-5xl mb-2">{enemy?.emoji}</div>
       <div className="text-danger font-display font-black text-sm sm:text-lg truncate drop-shadow-md">{enemy?.name}</div>
       <div className="w-4/5 h-1.5 sm:h-2 bg-black/60 border border-danger/30 p-[1px] relative overflow-hidden mt-2">
