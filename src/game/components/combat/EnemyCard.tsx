@@ -329,7 +329,7 @@ export function EnemyCard({
             {enemyHp} / {enemyMaxHp} HP
           </div>
         </div>
-        {renderActionButtons()}
+        {turnPhase !== 'executing' && renderActionButtons()}
       </div>
     );
   }
@@ -346,7 +346,7 @@ export function EnemyCard({
         <motion.div initial={false} animate={{ width: `${enemyMaxHp > 0 ? (enemyHp / enemyMaxHp) * 100 : 0}%` }} transition={{ type: 'spring', damping: 20, stiffness: 100 }} className="h-full bg-gradient-to-r from-red-600 to-red-400 relative z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
       </div>
       <div className="text-[7px] sm:text-[9px] font-black text-white/80 font-mono uppercase tracking-tighter mt-1">{enemyHp} / {enemyMaxHp} HP</div>
-      {renderActionButtons()}
+      {turnPhase !== 'executing' && renderActionButtons()}
     </div>
   );
 }
