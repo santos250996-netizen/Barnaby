@@ -830,53 +830,42 @@ export default function App() {
     // Bosses use the same system — their parts are in ENM too
     const zoneName = gameState.currentLocation;
     const zoneMaxRarityIdx = getZoneMaxRarityIndex(zoneName);
-    let preRoll: { itemName: string; itemRarity: Rarity; skillRarities: Record<string, Rarity>; partStats: Record<string, number> } | null = null;
-    {
-      const partNames: string[] = (ENM[enemyName] as any)?.parts?.map((p: any) => p.name) || [];
-      if (partNames.length > 0) {
-        // Roll which part drops
-        const dropPartName = partNames[Math.floor(Math.random() * partNames.length)];
-        const partData = getItemData(dropPartName);
-        if (partData) {
-          // Roll item rarity (zone max cap + enemy level weights)
-          const itemRarity = rollRarity(zoneMaxRarityIdx);
-          const listedRarity = (partData.rarity || 'normal') as Rarity;
 
-          // Roll skill rarities INDEPENDENTLY from item rarity
-          // Each skill on the piece gets its own rarity roll
-          const skillRarities: Record<string, Rarity> = {};
-          if (partData.skillIds) {
-            partData.skillIds.forEach((skId: string) => {
-              skillRarities[skId] = rollRarity(zoneMaxRarityIdx);
-            });
-          }
-
-          // Scale part stats by drop rarity vs listed rarity
-          const scaledStats: Record<string, number> = {};
-          if (partData.stats) {
-            Object.entries(partData.stats).forEach(([stat, val]) => {
-              scaledStats[stat] = scaleStat(val as number, listedRarity, itemRarity);
-            });
-          }
-
-          // Apply scaled item stats to enemy (attack→ATK, defense→HP, speed→speed, crit→crit%)
-          if (scaledStats.attack)  enemyData.attack += scaledStats.attack;
-          if (scaledStats.defense) enemyData.hp += scaledStats.defense * 3; // defense → +3 HP per point
-          if (scaledStats.speed)   enemyData.speed = (enemyData.speed || 10) + scaledStats.speed;
-          if (scaledStats.crit)    enemyData.crit = (enemyData.crit || 0) + scaledStats.crit;
-
-          // Apply SKILL RARITY scaling to enemy's skills
-          // When the enemy uses a skill that's on the pre-rolled piece,
-          // its damage/heal/shield attributes are scaled by the skill's rarity multiplier
-          // Effects (bleed, freeze, fury) remain unchanged
-          if (partData.skillIds && enemyData.intentPattern) {
-            const scaledPattern = [...enemyData.intentPattern];
-            // Store skill rarities on enemy so calculateEnemyIntent can apply them
-            enemyData._skillRarities = skillRarities;
-          }
-
-          preRoll = { itemName: dropPartName, itemRarity, skillRarities, partStats: scaledStats };
+    // Apply ALL enemy parts' stats to enemy (enemy IS the creature with all its parts)
+    const partNames: string[] = (ENM[enemyName] as any)?.parts?.map((p: any) => p.name) || [];
+    for (const partName of partNames) {
+      const partData = getItemData(partName);
+      if (partData && partData.stats) {
+        const partRarity = (partData.rarity || 'comun') as Rarity;
+        for (const [stat, val] of Object.entries(partData.stats)) {
+          const scaled = scaleStat(val as number, partRarity, partRarity);
+          if (stat === 'attack') enemyData.attack = (enemyData.attack || 0) + scaled;
+          else if (stat === 'defense') enemyData.defense = (enemyData.defense || 0) + scaled;
+          else if (stat === 'magic') enemyData.magic = (enemyData.magic || 0) + scaled;
+          else if (stat === 'magicRes') enemyData.magicRes = (enemyData.magicRes || 0) + scaled;
+          else if (stat === 'speed') enemyData.speed = (enemyData.speed || 0) + scaled;
+          else if (stat === 'crit') enemyData.crit = (enemyData.crit || 0) + scaled;
         }
+      }
+    }
+
+    // Pre-roll drop (one random part — only for loot, stats already applied above)
+    let preRoll: { itemName: string; itemRarity: Rarity; skillRarities: Record<string, Rarity>; partStats: Record<string, number> } | null = null;
+    if (partNames.length > 0) {
+      const dropPartName = partNames[Math.floor(Math.random() * partNames.length)];
+      const partData = getItemData(dropPartName);
+      if (partData) {
+        const itemRarity = rollRarity(zoneMaxRarityIdx);
+        const skillRarities: Record<string, Rarity> = {};
+        if (partData.skillIds) {
+          partData.skillIds.forEach((skId: string) => {
+            skillRarities[skId] = rollRarity(zoneMaxRarityIdx);
+          });
+        }
+        if (partData.skillIds && enemyData.intentPattern) {
+          enemyData._skillRarities = skillRarities;
+        }
+        preRoll = { itemName: dropPartName, itemRarity, skillRarities, partStats: {} };
       }
     }
     setPreRolledDrop(preRoll);
