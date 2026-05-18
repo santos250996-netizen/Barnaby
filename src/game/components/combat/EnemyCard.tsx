@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { TDB } from '@/game/data';
-import { EquipSlot, CombatFx } from '@/game/types';
+import { EquipSlot, CombatFx, FloatingNumber } from '@/game/types';
 import { Technique } from '@/game/data/types';
 import { getPutrefaccionState, getMutation, PUTREFACCION_MAX, slotName, enemyPutrefaccionDmg, enemyPutrefaccionReduction } from '@/game/data/putrefaccion';
 
@@ -56,6 +56,7 @@ interface EnemyCardProps {
   playerActionOrder: string[];
   currentActor: 'player' | 'enemy' | null;
   combatFx?: CombatFx | null;
+  floatingNumbers?: FloatingNumber[];
 }
 
 export function EnemyCard({
@@ -81,6 +82,7 @@ export function EnemyCard({
   playerActionOrder,
   currentActor,
   combatFx,
+  floatingNumbers = [],
 }: EnemyCardProps) {
   const img = enemy?.name ? ENEMY_IMAGES[enemy.name] : null;
   const [hoveredSkill, setHoveredSkill] = useState<string | null>(null);
@@ -428,6 +430,108 @@ export function EnemyCard({
     );
   };
 
+  // ── Floating Number styles per type ──
+  const getFloatStyle = (type: FloatingNumber['type']) => {
+    switch (type) {
+      case 'crit': return { text: 'text-yellow-300 text-2xl sm:text-3xl', shadow: '0 0 10px rgba(250,204,21,0.9), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.4 };
+      case 'damage': return { text: 'text-red-400 text-xl sm:text-2xl', shadow: '0 0 8px rgba(248,113,113,0.8), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.2 };
+      case 'heal': return { text: 'text-green-400 text-lg sm:text-xl', shadow: '0 0 8px rgba(74,222,128,0.8), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.1 };
+      case 'shield': return { text: 'text-blue-400 text-base sm:text-lg', shadow: '0 0 6px rgba(96,165,250,0.8), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.0 };
+      case 'buff': return { text: 'text-amber-300 text-sm sm:text-base', shadow: '0 0 6px rgba(251,191,36,0.8), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.0 };
+      case 'debuff': return { text: 'text-purple-400 text-sm sm:text-base', shadow: '0 0 6px rgba(192,132,252,0.8), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.0 };
+      case 'dot': return { text: 'text-orange-400 text-sm sm:text-base', shadow: '0 0 6px rgba(251,146,60,0.8), 0 2px 4px rgba(0,0,0,0.9)', scale: 1.0 };
+      default: return { text: 'text-white text-lg', shadow: '0 2px 4px rgba(0,0,0,0.9)', scale: 1.0 };
+    }
+  };
+
+  // ── Floating Numbers: rendered INSIDE the card, split by target ──
+  // Enemy effects → left side, Player effects → right side
+  const renderFloatingNumbers = () => {
+    if (floatingNumbers.length === 0) return null;
+
+    return (
+      <>
+        {/* Enemy-targeted numbers — center-LEFT */}
+        <div className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-[60] pointer-events-none flex flex-col items-start gap-1">
+          <AnimatePresence>
+            {floatingNumbers.filter(f => f.target === 'enemy').map(f => {
+              const s = getFloatStyle(f.type);
+              return (
+                <motion.div
+                  key={f.id}
+                  initial={{ opacity: 0, x: -15, scale: s.scale * 1.3 }}
+                  animate={{ opacity: [0, 1, 1, 1, 0], x: [-15, 0, 5, 10, 20], scale: [s.scale * 1.3, s.scale, s.scale, s.scale * 0.9, s.scale * 0.7] }}
+                  exit={{ opacity: 0, x: 30, scale: 0.5 }}
+                  transition={{ duration: 1.8, ease: 'easeOut', times: [0, 0.1, 0.4, 0.7, 1] }}
+                  className={`font-black font-display whitespace-nowrap ${s.text}`}
+                  style={{ textShadow: s.shadow }}
+                >
+                  {f.val}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+
+        {/* Player-targeted numbers — center-RIGHT */}
+        <div className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-[60] pointer-events-none flex flex-col items-end gap-1">
+          <AnimatePresence>
+            {floatingNumbers.filter(f => f.target === 'player').map(f => {
+              const s = getFloatStyle(f.type);
+              return (
+                <motion.div
+                  key={f.id}
+                  initial={{ opacity: 0, x: 15, scale: s.scale * 1.3 }}
+                  animate={{ opacity: [0, 1, 1, 1, 0], x: [15, 0, -5, -10, -20], scale: [s.scale * 1.3, s.scale, s.scale, s.scale * 0.9, s.scale * 0.7] }}
+                  exit={{ opacity: 0, x: -30, scale: 0.5 }}
+                  transition={{ duration: 1.8, ease: 'easeOut', times: [0, 0.1, 0.4, 0.7, 1] }}
+                  className={`font-black font-display whitespace-nowrap ${s.text}`}
+                  style={{ textShadow: s.shadow }}
+                >
+                  {f.val}
+                </motion.div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </>
+    );
+  };
+
+  // ── Player Status Effects — rendered on the RIGHT side of the card ──
+  const renderPlayerStatusEffects = () => {
+    if (!combatFx) return null;
+    const fx = combatFx;
+    const effects: { emoji: string; label: string; color: string; glow: string }[] = [];
+
+    if (fx.playerBleed && fx.playerBleedDmg > 0) effects.push({ emoji: '🩸', label: `-${fx.playerBleedDmg}/t`, color: 'text-red-400', glow: 'shadow-[0_0_4px_rgba(248,113,113,0.5)]' });
+    if (fx.playerPoison && fx.playerPoisonDmg > 0) effects.push({ emoji: '☠️', label: `-${fx.playerPoisonDmg}/t`, color: 'text-green-400', glow: 'shadow-[0_0_4px_rgba(74,222,128,0.5)]' });
+    if (fx.playerFrozen) effects.push({ emoji: '❄️', label: 'STUN', color: 'text-cyan-300', glow: 'shadow-[0_0_4px_rgba(103,232,249,0.5)]' });
+    if (fx.playerDebuff && fx.playerDebuffTurns > 0) effects.push({ emoji: '💨', label: `-30% (${fx.playerDebuffTurns})`, color: 'text-purple-400', glow: 'shadow-[0_0_4px_rgba(192,132,252,0.5)]' });
+    if (fx.playerShield) effects.push({ emoji: '🛡️', label: 'ESC', color: 'text-blue-400', glow: 'shadow-[0_0_4px_rgba(96,165,250,0.5)]' });
+    if (fx.playerGuard) effects.push({ emoji: '🛡️', label: 'GRD', color: 'text-blue-300', glow: 'shadow-[0_0_4px_rgba(96,165,250,0.3)]' });
+
+    if (effects.length === 0) return null;
+
+    return (
+      <div className="absolute right-1.5 sm:right-2 bottom-16 sm:bottom-20 z-[30] flex flex-col items-end gap-0.5">
+        {effects.map((e, i) => (
+          <motion.div
+            key={`p-${i}`}
+            initial={{ scale: 0.8, opacity: 0, x: 10 }}
+            animate={{ scale: 1, opacity: 1, x: 0 }}
+            className={`flex items-center gap-0.5 px-1 py-px bg-black/80 border rounded-sm text-[6px] sm:text-[7px] font-black ${e.color} ${e.glow}`}
+            style={{ borderColor: 'currentColor' }}
+          >
+            <span>{e.emoji}</span>
+            <span>{e.label}</span>
+          </motion.div>
+        ))}
+      </div>
+    );
+  };
+
+  // ── Enemy Status Effects — rendered on the LEFT side of the card ──
   const renderEnemyStatusEffects = () => {
     if (!combatFx) return null;
     const fx = combatFx;
@@ -443,13 +547,13 @@ export function EnemyCard({
     if (effects.length === 0) return null;
 
     return (
-      <div className="flex flex-wrap gap-1 mt-1">
+      <div className="absolute left-1.5 sm:left-2 bottom-16 sm:bottom-20 z-[30] flex flex-col items-start gap-0.5">
         {effects.map((e, i) => (
           <motion.div
-            key={i}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className={`flex items-center gap-0.5 px-1 py-px bg-black/70 border rounded-sm text-[6px] sm:text-[7px] font-black ${e.color} ${e.glow}`}
+            key={`e-${i}`}
+            initial={{ scale: 0.8, opacity: 0, x: -10 }}
+            animate={{ scale: 1, opacity: 1, x: 0 }}
+            className={`flex items-center gap-0.5 px-1 py-px bg-black/80 border rounded-sm text-[6px] sm:text-[7px] font-black ${e.color} ${e.glow}`}
             style={{ borderColor: 'currentColor' }}
           >
             <span>{e.emoji}</span>
@@ -504,7 +608,6 @@ export function EnemyCard({
       <div className={`text-${large ? '[7px] sm:text-[9px]' : '[8px] sm:text-[10px]'} font-black text-white/80 font-mono uppercase tracking-tighter${large ? ' mt-1' : ''}`}>
         {enemyHp} / {enemyMaxHp} HP
       </div>
-      {renderEnemyStatusEffects()}
       {renderEnemyPutrefBar()}
     </>
   );
@@ -516,6 +619,11 @@ export function EnemyCard({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20" />
         {renderIntentBadge()}
         {renderPlayerExecutionMirror()}
+        {/* Floating Numbers — left (enemy) / right (player) */}
+        {renderFloatingNumbers()}
+        {/* Status Effect Badges — left (enemy) / right (player) */}
+        {renderEnemyStatusEffects()}
+        {renderPlayerStatusEffects()}
         <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 space-y-1">
           <div className="text-white font-display font-black text-sm sm:text-base uppercase tracking-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] truncate">
             {enemy?.name}
@@ -527,7 +635,6 @@ export function EnemyCard({
           <div className="text-[8px] sm:text-[10px] font-black text-white/80 font-mono uppercase tracking-tighter">
             {enemyHp} / {enemyMaxHp} HP
           </div>
-          {renderEnemyStatusEffects()}
           {renderEnemyPutrefBar()}
         </div>
         {turnPhase !== 'executing' && renderActionButtons()}
@@ -539,6 +646,11 @@ export function EnemyCard({
     <div className="relative w-full h-full border-2 border-danger/50 overflow-hidden bg-[#1a1428] shadow-[0_0_16px_rgba(220,38,38,0.3)] flex flex-col items-center justify-center min-h-[300px]" onClick={() => combatMenu !== 'main' && setCombatMenu('main')}>
       {renderIntentBadge()}
       {renderPlayerExecutionMirror()}
+      {/* Floating Numbers — left (enemy) / right (player) */}
+      {renderFloatingNumbers()}
+      {/* Status Effect Badges — left (enemy) / right (player) */}
+      {renderEnemyStatusEffects()}
+      {renderPlayerStatusEffects()}
       <div className="text-4xl sm:text-5xl mb-2">{enemy?.emoji}</div>
       <div className="text-danger font-display font-black text-sm sm:text-lg truncate drop-shadow-md">{enemy?.name}</div>
       <div className="w-4/5 h-1.5 sm:h-2 bg-black/60 border border-danger/30 p-[1px] relative overflow-hidden mt-2">
@@ -546,7 +658,6 @@ export function EnemyCard({
         <motion.div initial={false} animate={{ width: `${enemyMaxHp > 0 ? (enemyHp / enemyMaxHp) * 100 : 0}%` }} transition={{ type: 'spring', damping: 20, stiffness: 100 }} className="h-full bg-gradient-to-r from-red-600 to-red-400 relative z-20 shadow-[0_0_10px_rgba(220,38,38,0.5)]" />
       </div>
       <div className="text-[7px] sm:text-[9px] font-black text-white/80 font-mono uppercase tracking-tighter mt-1">{enemyHp} / {enemyMaxHp} HP</div>
-      {renderEnemyStatusEffects()}
       {renderEnemyPutrefBar()}
       {turnPhase !== 'executing' && renderActionButtons()}
     </div>
