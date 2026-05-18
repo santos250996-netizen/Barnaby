@@ -220,17 +220,15 @@ export default function App() {
   }, [storeIsCombat]);
 
   // Sync Zustand toasts to local toasts (combat system writes to Zustand, UI reads local)
+  // We use showToast() which handles add + auto-remove timer, avoiding stuck toasts
+  const syncedToastIds = React.useRef(new Set<number>());
   React.useEffect(() => {
-    if (storeToasts.length > 0) {
-      setToasts(prev => {
-        const existingIds = new Set(prev.map(t => t.id));
-        const newToasts = storeToasts.filter(t => !existingIds.has(t.id));
-        if (newToasts.length === 0) return prev;
-        const merged = [...prev, ...newToasts];
-        return merged;
-      });
+    const newToasts = storeToasts.filter(t => !syncedToastIds.current.has(t.id));
+    if (newToasts.length > 0) {
+      newToasts.forEach(t => showToast(t.msg, t.type));
+      storeToasts.forEach(t => syncedToastIds.current.add(t.id));
     }
-  }, [storeToasts]);
+  }, [storeToasts, showToast]);
 
   // During combat, sync gameState.pieces with store (enemy attacks update store directly)
   React.useEffect(() => {
