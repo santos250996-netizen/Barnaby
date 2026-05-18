@@ -852,21 +852,29 @@ export default function App() {
       }
     }
 
-    // Apply combatRarity to ALL enemy skills
-    const skillRarities: Record<string, Rarity> = {};
+    // Apply combatRarity to ALL enemy skills (combat only)
+    const combatSkillRarities: Record<string, Rarity> = {};
     for (const partName of partNames) {
       const partData = getItemData(partName);
       if (partData?.skillIds) {
-        partData.skillIds.forEach((skId: string) => { skillRarities[skId] = combatRarity; });
+        partData.skillIds.forEach((skId: string) => { combatSkillRarities[skId] = combatRarity; });
       }
     }
-    if (Object.keys(skillRarities).length > 0) enemyData._skillRarities = skillRarities;
+    if (Object.keys(combatSkillRarities).length > 0) enemyData._skillRarities = combatSkillRarities;
 
-    // Pre-roll drop: random part with combatRarity
+    // Pre-roll drop: SEPARATE rolls for part rarity and skill rarity
     let preRoll: { itemName: string; itemRarity: Rarity; skillRarities: Record<string, Rarity>; partStats: Record<string, number> } | null = null;
     if (partNames.length > 0) {
       const dropPartName = partNames[Math.floor(Math.random() * partNames.length)];
-      preRoll = { itemName: dropPartName, itemRarity: combatRarity, skillRarities, partStats: {} };
+      const dropPartRarity = rollRarity(zoneMaxRarityIdx);
+      const dropSkillRarity = rollRarity(zoneMaxRarityIdx);
+      // Build skill rarities for the drop using dropSkillRarity
+      const dropSkillRarities: Record<string, Rarity> = {};
+      const dropPartData = getItemData(dropPartName);
+      if (dropPartData?.skillIds) {
+        dropPartData.skillIds.forEach((skId: string) => { dropSkillRarities[skId] = dropSkillRarity; });
+      }
+      preRoll = { itemName: dropPartName, itemRarity: dropPartRarity, skillRarities: dropSkillRarities, partStats: {} };
     }
     setPreRolledDrop(preRoll);
 
