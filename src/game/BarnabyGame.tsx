@@ -332,7 +332,7 @@ export default function App() {
         playSound('click');
       }
     }, 800);
-  }, [playSound, setGameState, checkLoreUnlocks]);
+  }, [playSound, setGameState, checkLoreUnlocks, gameState.storyFlags.tutorialComplete]);
 
   // --- Helpers ---
   const getActiveSets = useCallback(() => {
@@ -1722,7 +1722,11 @@ export default function App() {
 
     showToast(`¡Misión Entregada: ${quest.name}!`, "success");
     if (isTutorial && questId === 'tutorial_4_piernas') {
-      setTimeout(() => showToast('¡Tutorial completado! Ahora puedes explorar el mundo. Equipa tus piezas de Goblin y ve al Bosque.', 'success'), 500);
+      setTimeout(() => {
+        showToast('¡Tutorial completado! Equipa tus piezas de Goblin y ve al Bosque.', 'success');
+        setNpcDialog(null);
+        setActivePanel('map');
+      }, 600);
     }
     playSound('quest');
   };
