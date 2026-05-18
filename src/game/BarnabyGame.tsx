@@ -219,17 +219,6 @@ export default function App() {
     }
   }, [storeIsCombat]);
 
-  // Sync Zustand toasts to local toasts (combat system writes to Zustand, UI reads local)
-  // We use showToast() which handles add + auto-remove timer, avoiding stuck toasts
-  const syncedToastIds = React.useRef(new Set<number>());
-  React.useEffect(() => {
-    const newToasts = storeToasts.filter(t => !syncedToastIds.current.has(t.id));
-    if (newToasts.length > 0) {
-      newToasts.forEach(t => showToast(t.msg, t.type));
-      storeToasts.forEach(t => syncedToastIds.current.add(t.id));
-    }
-  }, [storeToasts, showToast]);
-
   // During combat, sync gameState.pieces with store (enemy attacks update store directly)
   React.useEffect(() => {
     if (isCombat && storePieces !== undefined && storePieces !== gameState.pieces) {
@@ -266,6 +255,17 @@ export default function App() {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 2500);
   }, []);
+
+  // Sync Zustand toasts to local toasts (combat system writes to Zustand, UI reads local)
+  // We use showToast() which handles add + auto-remove timer, avoiding stuck toasts
+  const syncedToastIds = React.useRef(new Set<number>());
+  React.useEffect(() => {
+    const newToasts = storeToasts.filter(t => !syncedToastIds.current.has(t.id));
+    if (newToasts.length > 0) {
+      newToasts.forEach(t => showToast(t.msg, t.type));
+      storeToasts.forEach(t => syncedToastIds.current.add(t.id));
+    }
+  }, [storeToasts, showToast]);
 
   // --- Travel with transition + event system ---
   // --- Lore unlock system ---
