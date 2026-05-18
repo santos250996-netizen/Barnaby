@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Sword, Shield, Zap, Activity, Footprints, TrendingUp, X, Flame, Wind } from 'lucide-react';
 import { EquipSlot, GameState } from '@/game/types';
-import { getItemData, TDB, SETS, RARITY_CONFIG, Rarity, scaleStat, SKILL_RARITY_MULTIPLIER } from '@/game/constants';
+import { getItemData, TDB, SETS, RARITY_CONFIG, RARITY_STAT_FACTOR, Rarity, scaleStat, SKILL_RARITY_MULTIPLIER } from '@/game/constants';
 import { StatItem } from '@/game/components/ui/StatItem';
 import { getRarityColor } from '@/game/components/ui/EquipmentSlot';
 

@@ -127,3 +127,26 @@ Stage Summary:
 - Base stats cambiadas a 3 uniforme para todas
 - Sin errores nuevos de compilación
 
+---
+Task ID: 1
+Agent: Main Agent
+Task: Fix stat budget system — rarity scaling for 30pt budget
+
+Work Log:
+- Added RARITY_STAT_FACTOR to rarity.ts (comun=0.65, normal=0.78, raro=0.87, epico=0.94, legendario=1.0)
+- Updated scaleStat() to use RARITY_STAT_FACTOR instead of RARITY_CONFIG multiplier ratio
+- Added getEffectiveStat() helper function
+- Updated getAttack/getDefense/getMagic/getMagicRes/getSpeed/getCrit in BarnabyGame.tsx to apply RARITY_STAT_FACTOR
+- Updated getGearScore to use RARITY_STAT_FACTOR with adjusted thresholds (Leyenda>=110, Campeón>=95, Veterano>=80)
+- Updated InventoryContent.tsx and CharacterContent.tsx imports (RARITY_STAT_FACTOR)
+- Removed 1.5x boss multiplier from generatePartData in items.ts
+- Verified all modal stat displays use scaleStat which now correctly scales by rarity
+- Sets already empty (from previous session)
+- TypeScript compiles with no new errors
+
+Stage Summary:
+- All EDB items have 30pt budget base stats
+- Rarity determines realization: comun ~65%, legendario 100%
+- Part modals now show rarity-scaled stats (e.g., comun Cráneo de Trasgo shows ~20 effective points instead of 30)
+- Accumulated stats (ATK/DEF/MAG/MAG_RES/SPD/CRIT) in inventory and header now reflect rarity scaling
+- Gearscore thresholds adjusted for new stat ranges

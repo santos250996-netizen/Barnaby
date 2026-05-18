@@ -19,7 +19,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Sword, Shield, Zap, Settings, X } from 'lucide-react';
-import { TDB, LOC, ENM, QST, QB, SETS, LORE_DATA, getItemData, rollRarity, scaleStat, scaleSkillValue, scaleSkillPercent, RARITY_CONFIG, Rarity, RARITIES, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex } from '@/game/constants';
+import { TDB, LOC, ENM, QST, QB, SETS, LORE_DATA, getItemData, rollRarity, scaleStat, scaleSkillValue, scaleSkillPercent, RARITY_CONFIG, RARITY_STAT_FACTOR, Rarity, RARITIES, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex } from '@/game/constants';
 import { useAudio } from '@/game/useAudio';
 import { usePreloadContext, usePrefetchAdjacent, preloadEnemyImages } from '@/game/hooks';
 import dynamic from 'next/dynamic';
@@ -335,7 +335,7 @@ export default function App() {
       if (eq && getItemData(eq.id)) {
         const itemData = getItemData(eq.id);
         const stats = itemData.stats || {};
-        const rarityMult = RARITY_CONFIG[eq.rarity].multiplier;
+        const rarityMult = RARITY_STAT_FACTOR[eq.rarity as Rarity];
         // Sum all 6 weighted stats for this piece (no HP — HP is not a stat)
         const pieceStats = (stats.attack || 0) + (stats.defense || 0) + (stats.speed || 0) + (stats.crit || 0) + (stats.magic || 0) + (stats.magicRes || 0);
         totalStats += pieceStats * rarityMult;
@@ -347,9 +347,9 @@ export default function App() {
   }, [gameState.equipment]);
 
   const getGearRank = useCallback((gs: number) => {
-    if (gs >= 350) return { label: 'Leyenda', color: '#eab308' };
-    if (gs >= 250) return { label: 'Campeón', color: '#a855f7' };
-    if (gs >= 150) return { label: 'Veterano', color: '#3b82f6' };
+    if (gs >= 110) return { label: 'Leyenda', color: '#eab308' };
+    if (gs >= 95) return { label: 'Campeón', color: '#a855f7' };
+    if (gs >= 80) return { label: 'Veterano', color: '#3b82f6' };
     if (gs >= 60) return { label: 'Aventurero', color: '#22c55e' };
     return { label: 'Novato', color: '#9ca3af' };
   }, []);
@@ -367,7 +367,10 @@ export default function App() {
   const getAttack = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
-      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.attack || 0;
+      if (eq && getItemData(eq.id)) {
+        const base = getItemData(eq.id).stats?.attack || 0;
+        bonus += Math.floor(base * RARITY_STAT_FACTOR[eq.rarity as Rarity]);
+      }
     });
     return 3 + bonus;
   }, [gameState.equipment]);
@@ -375,7 +378,10 @@ export default function App() {
   const getDefense = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
-      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.defense || 0;
+      if (eq && getItemData(eq.id)) {
+        const base = getItemData(eq.id).stats?.defense || 0;
+        bonus += Math.floor(base * RARITY_STAT_FACTOR[eq.rarity as Rarity]);
+      }
     });
     return 3 + bonus;
   }, [gameState.equipment]);
@@ -383,7 +389,10 @@ export default function App() {
   const getCrit = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
-      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.crit || 0;
+      if (eq && getItemData(eq.id)) {
+        const base = getItemData(eq.id).stats?.crit || 0;
+        bonus += Math.floor(base * RARITY_STAT_FACTOR[eq.rarity as Rarity]);
+      }
     });
     return gameState.resources.crit + bonus;
   }, [gameState.resources.crit, gameState.equipment]);
@@ -391,7 +400,10 @@ export default function App() {
   const getMagic = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
-      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magic || 0;
+      if (eq && getItemData(eq.id)) {
+        const base = getItemData(eq.id).stats?.magic || 0;
+        bonus += Math.floor(base * RARITY_STAT_FACTOR[eq.rarity as Rarity]);
+      }
     });
     return 3 + bonus;
   }, [gameState.equipment]);
@@ -399,7 +411,10 @@ export default function App() {
   const getMagicRes = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
-      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.magicRes || 0;
+      if (eq && getItemData(eq.id)) {
+        const base = getItemData(eq.id).stats?.magicRes || 0;
+        bonus += Math.floor(base * RARITY_STAT_FACTOR[eq.rarity as Rarity]);
+      }
     });
     return 3 + bonus;
   }, [gameState.equipment]);
@@ -407,7 +422,10 @@ export default function App() {
   const getSpeed = useCallback(() => {
     let bonus = 0;
     (Object.values(gameState.equipment) as (EquipSlot | null)[]).forEach(eq => {
-      if (eq && getItemData(eq.id)) bonus += getItemData(eq.id).stats?.speed || 0;
+      if (eq && getItemData(eq.id)) {
+        const base = getItemData(eq.id).stats?.speed || 0;
+        bonus += Math.floor(base * RARITY_STAT_FACTOR[eq.rarity as Rarity]);
+      }
     });
     return 3 + bonus;
   }, [gameState.equipment]);

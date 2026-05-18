@@ -174,12 +174,10 @@ export function generatePartData(itemName: string): any {
   // Rarity based on whether enemy is boss, not zone
   let rarityIdx = enemyData.isBoss ? 3 : 0; // bosses = legendario base, regular = comun base
 
-  // Tier multiplier: 1.0 for common, 1.5 for boss
-  const tierMult = enemyData.isBoss ? 1.5 : 1.0;
-
-  // Scale stats by tier multiplier only (no zone level)
+  // No zone-based multiplier — horizontal progression
+  // Stats come from archetype template scaled only by rarity via RARITY_STAT_FACTOR
   Object.entries(slotStats).forEach(([stat, val]) => {
-    scaledStats[stat] = Math.floor((val as number) * tierMult);
+    scaledStats[stat] = Math.floor(val as number);
   });
 
   // No generic skills — all enemies have explicit parts with their own skills
