@@ -272,3 +272,28 @@ Stage Summary:
 - Los botones de skill cambian de brillo/color progresivamente al re-usarlos
 - El panel de intent solo aparece durante la fase de planning
 - 0 nuevos errores de lint (3 pre-existentes)
+---
+Task ID: 3
+Agent: Super Z (main)
+Task: Actualizar menú Skills para mostrar efectos de putrefacción en 4 estados
+
+Work Log:
+- Reescrito SkillsContent.tsx completamente con información de putrefacción detallada
+- Agregada leyenda de colores de putrefacción en la parte superior del panel
+- Cada skill ahora muestra una sección desplegable con 4 estados:
+  - 🟡 Fresco (Uso #1): Sin modificaciones
+  - 🟢 Desgastado (Uso #2): Buffs verdes, Costs rojos
+  - 🟠 Putrido (Uso #3): Buffs más fuertes, Costs más fuertes, Extras azules
+  - 🔴 Necrótico (Uso #4): Máximo poder, máximo riesgo, Infección púrpura
+- Layout 2x2 grid para los 4 estados con gradientes de color por estado
+- Bordes laterales coloreados por estado
+- Descripción detallada con iconos: ▲ buff verde, ▼ costo rojo, ★ extra azul/púrpura
+- Footer con advertencia de destrucción al 4° uso
+- Cálculo de daño base escalado por rareza para mostrar valores reales
+- Fix adicional: debuff display corregido (clamped a 0-100%)
+
+Stage Summary:
+- Archivo modificado: SkillsContent.tsx (reescrito de 107 a ~200 líneas)
+- El jugador ahora ve exactamente qué pasa en cada uso de cada skill
+- Formato visual claro: buffs en verde, costos en rojo, extras en azul, infección en púrpura
+- 0 nuevos errores de lint
