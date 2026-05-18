@@ -19,7 +19,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Skull, Sword, Shield, Zap, Settings, X } from 'lucide-react';
-import { TDB, LOC, ENM, QST, QB, SETS, LORE_DATA, getItemData, rollRarity, scaleStat, scaleSkillValue, scaleSkillPercent, RARITY_CONFIG, RARITY_STAT_FACTOR, Rarity, RARITIES, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex, PUTREFACCION_MAX } from '@/game/constants';
+import { TDB, LOC, ENM, QST, QB, SETS, LORE_DATA, getItemData, rollRarity, scaleStat, scaleSkillValue, scaleSkillPercent, RARITY_CONFIG, RARITY_STAT_FACTOR, Rarity, RARITIES, SKILL_RARITY_MULTIPLIER, getZoneMaxRarityIndex, PUTREFACCION_MAX, getMutation, getPutrefaccionState, slotName, type PutrefaccionMutation } from '@/game/constants';
 import { useAudio } from '@/game/useAudio';
 import { usePreloadContext, usePrefetchAdjacent, preloadEnemyImages } from '@/game/hooks';
 import dynamic from 'next/dynamic';
@@ -2047,6 +2047,90 @@ export default function App() {
                       </div>
 
                     </div>
+
+                    {/* Player Intent Panel — Show selected skills + putrefacción effects */}
+                    {storeTurnPhase === 'planning' && storePlayerActionOrder && (
+                      <div className="px-1 sm:px-2 pb-2">
+                        <div className="flex gap-1">
+                          {[0, 1, 2, 3].map(idx => {
+                            const skillId = storePlayerActionOrder[idx];
+                            if (!skillId) {
+                              // Slot vacío — pulsa si es el próximo
+                              const isNext = storePlayerActionOrder.slice(0, idx).every(s => s && s !== '') && (!storePlayerActionOrder[idx] || storePlayerActionOrder[idx] === '');
+                              return (
+                                <div key={idx} className={`flex-1 h-10 sm:h-12 rounded border border-dashed flex items-center justify-center transition-all ${
+                                  isNext ? 'border-[#d4943a]/60 bg-[#d4943a]/5' : 'border-white/10 bg-white/[0.02]'
+                                }`}>
+                                  <span className={`text-[7px] sm:text-[8px] font-black ${isNext ? 'text-[#d4943a]/50' : 'text-white/15'}`}>
+                                    {isNext ? `${idx + 1}°` : '—'}
+                                  </span>
+                                </div>
+                              );
+                            }
+
+                            const tech = (TDB as any)[skillId];
+                            const skSlot = findSkillSlot(skillId);
+                            // Calcular qué putrefacción tendrá ESTE uso específico
+                            // Cada uso anterior de esta misma skill suma 1 al counter
+                            let useIndex = 0;
+                            for (let i = 0; i < idx; i++) {
+                              if (storePlayerActionOrder[i] === skillId) useIndex++;
+                            }
+                            const currentPutref = (skSlot && storePlayerPutrefaccion) ? (storePlayerPutrefaccion[skSlot] || 0) : 0;
+                            const putrefAtExecution = currentPutref + useIndex;
+                            const pState = getPutrefaccionState(putrefAtExecution);
+                            const mutation = tech ? getMutation(tech.type, putrefAtExecution) : null;
+                            const skillIcon = tech?.icon || null;
+
+                            return (
+                              <motion.div
+                                key={skillId + '-' + idx}
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ duration: 0.2 }}
+                                className="flex-1 h-10 sm:h-12 rounded border overflow-hidden relative"
+                                style={{
+                                  borderColor: pState.color + '80',
+                                  background: `linear-gradient(135deg, ${pState.color}15 0%, transparent 60%)`,
+                                }}
+                              >
+                                <div className="flex items-center h-full gap-1 px-1">
+                                  {/* Skill icon */}
+                                  <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden border flex-shrink-0 flex items-center justify-center bg-black/50" style={{ borderColor: pState.color + '60' }}>
+                                    {skillIcon ? (
+                                      <img src={skillIcon} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                    ) : (
+                                      <span className="text-[10px] sm:text-xs">{tech?.emoji || '?'}</span>
+                                    )}
+                                  </div>
+                                  {/* Skill info */}
+                                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                    <div className="text-[6px] sm:text-[7px] font-black text-white/70 truncate leading-none">
+                                      {tech?.name || skillId}
+                                    </div>
+                                    {mutation && mutation.logTag && (
+                                      <div className="text-[5px] sm:text-[6px] font-black leading-none mt-0.5 truncate" style={{ color: pState.color }}>
+                                        {pState.emoji} {mutation.logDesc}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {/* Slot number */}
+                                  <span className="text-[7px] font-black text-white/30 flex-shrink-0">{idx + 1}</span>
+                                </div>
+                                {/* Putrefacción state badge */}
+                                {putrefAtExecution > 0 && (
+                                  <div className="absolute top-0 right-0 px-1 rounded-bl" style={{ backgroundColor: pState.color + '30' }}>
+                                    <span className="text-[5px] font-black" style={{ color: pState.color }}>
+                                      {pState.emoji}{pState.name}
+                                    </span>
+                                  </div>
+                                )}
+                              </motion.div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col md:flex-row gap-4 h-full overflow-hidden">

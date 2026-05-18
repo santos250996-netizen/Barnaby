@@ -246,3 +246,29 @@ Stage Summary:
 - El límite es PUTREFACCION_MAX (4) - putrefacción actual de la parte
 - Auto-confirm solo cuando 4 slots están llenos
 - El sistema de putrefacción (data layer) ya estaba completamente implementado
+---
+Task ID: 2
+Agent: Super Z (main)
+Task: Agregar panel de Player Intent y cambiar brillo de botones por putrefacción
+
+Work Log:
+- Creado Player Intent Panel en BarnabyGame.tsx debajo de la barra HP del jugador
+  - 4 slots horizontales que muestran las skills seleccionadas durante planning phase
+  - Cada slot muestra: icono de skill, nombre, efecto de mutación, badge de estado de putrefacción
+  - Slots vacíos muestran borde punteado, el próximo slot a llenar pulsa en dorado
+  - Animación de entrada con Framer Motion (scale 0.8→1)
+  - Cálculo correcto: cada uso de la misma skill tiene su propio nivel de putrefacción
+  - Colores de borde y fondo basados en el estado de putrefacción RESULTANTE
+- Actualizado renderSkillButton en EnemyCard.tsx con brillo por estado:
+  - Glow progresivo: Desgastado (verde suave) → Putrido (naranja medio) → Necrótico (rojo intenso con inner glow)
+  - Brillo de imagen por estado: brightness/saturate progresivos
+  - Al máximo de usos: tono rojizo apagado (sepia + baja saturación)
+  - Badge de conteo cambia de color según estado (ya no siempre dorado)
+  - Tooltip actualizado para mostrar el estado RESULTANTE al seleccionar
+
+Stage Summary:
+- Archivos modificados: BarnabyGame.tsx (Player Intent Panel), EnemyCard.tsx (brillo de botones)
+- El jugador ahora ve exactamente qué efecto tendrá cada skill seleccionada
+- Los botones de skill cambian de brillo/color progresivamente al re-usarlos
+- El panel de intent solo aparece durante la fase de planning
+- 0 nuevos errores de lint (3 pre-existentes)

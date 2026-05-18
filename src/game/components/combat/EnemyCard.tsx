@@ -100,33 +100,70 @@ export function EnemyCard({
     const remainingUses = PUTREFACCION_MAX - level;
     const canInteract = !isDestroyed && timesSelected < remainingUses;
 
+    // ── Estado de putrefacción RESULTANTE del próximo uso ──
+    const nextPutrefLevel = level + timesSelected; // nivel después de ejecutar todas las seleccionadas
+    const nextPState = getPutrefaccionState(nextPutrefLevel);
+
     let btnClass = 'w-12 h-12 sm:w-14 sm:h-14 rounded-full overflow-hidden transition-all relative ';
     if (isDestroyed) {
       btnClass += 'bg-black/70 border-2 border-gray-500/30 opacity-40 cursor-not-allowed';
     } else if (!canInteract && isAtLeastOnce) {
-      // Seleccionada al máximo de usos permitidos
-      btnClass += 'bg-black/70 border-2 border-red-400/60 cursor-not-allowed';
-    } else if (isAtLeastOnce) {
-      btnClass += 'bg-black/70 border-2 border-yellow-400';
+      // Seleccionada al máximo de usos permitidos — borde oscuro, indica saturación
+      btnClass += 'bg-black/70 border-2 border-white/20 cursor-not-allowed opacity-60';
     } else {
       btnClass += 'bg-black/70 border-2';
     }
 
-    const glowStyle = (!isDestroyed && level > 0) ? (() => {
-      if (level === 3) return { borderColor: '#dc2626', boxShadow: '0 0 18px rgba(220,38,38,0.8)' };
-      if (level === 2) return { borderColor: '#f97316', boxShadow: '0 0 14px rgba(249,115,22,0.6)' };
-      if (level === 1) return { borderColor: '#a3e635', boxShadow: '0 0 10px rgba(163,230,53,0.4)' };
-      return { borderColor: '#d4943a', boxShadow: undefined };
-    })() : undefined;
+    // ── Glow por estado de putrefacción RESULTANTE ──
+    // Si la skill está seleccionada, el glow refleja el estado que tendrá al ejecutarse
+    // Si no está seleccionada pero ya tiene putrefacción, glow refleja el estado actual
+    const activePutrefLevel = isAtLeastOnce ? nextPutrefLevel : level;
+    const activePState = isAtLeastOnce ? nextPState : pState;
+    const hasGlow = !isDestroyed && activePutrefLevel > 0;
 
+    const glowStyle = hasGlow ? (() => {
+      const c = activePState.color;
+      if (isAtLeastOnce && !canInteract) {
+        // Al máximo de usos — glow rojo oscuro, indica "no más"
+        return { borderColor: '#7f1d1d', boxShadow: '0 0 8px rgba(127,29,29,0.5)' };
+      }
+      if (activePutrefLevel >= 3) return { borderColor: c, boxShadow: `0 0 20px ${c}cc, 0 0 6px ${c}80 inset` };
+      if (activePutrefLevel >= 2) return { borderColor: c, boxShadow: `0 0 16px ${c}99, 0 0 4px ${c}60 inset` };
+      if (activePutrefLevel >= 1) return { borderColor: c, boxShadow: `0 0 12px ${c}80, 0 0 3px ${c}40 inset` };
+      return undefined;
+    })() : (!isDestroyed && isAtLeastOnce ? { borderColor: '#d4943a', boxShadow: '0 0 10px rgba(212,148,58,0.4)' } : undefined);
+
+    // ── Brillo de la imagen según estado de putrefacción resultante ──
     const imgClass = ['w-full h-full object-cover'];
     if (isDestroyed) imgClass.push('grayscale');
-    if (isAtLeastOnce) imgClass.push('brightness-125 saturate-150');
+    if (isAtLeastOnce) {
+      if (!canInteract) {
+        // Al máximo — tono rojizo apagado
+        imgClass.push('brightness-90 saturate-75 sepia-[0.2]');
+      } else if (nextPutrefLevel >= 3) {
+        // Necrótico — rojo intenso, muy saturado
+        imgClass.push('brightness-125 saturate-[1.8]');
+      } else if (nextPutrefLevel >= 2) {
+        // Putrido — naranja brillante
+        imgClass.push('brightness-120 saturate-[1.5]');
+      } else if (nextPutrefLevel >= 1) {
+        // Desgastado — verde lima brillante
+        imgClass.push('brightness-115 saturate-[1.3]');
+      } else {
+        // Fresco — brillo dorado base
+        imgClass.push('brightness-110 saturate-[1.1]');
+      }
+    }
 
-    // Tooltip: mostrar info de putrefacción cuando hay level > 0 O cuando está al máximo de usos
+    // Tooltip: mostrar info de putrefacción cuando hay level > 0 O cuando está seleccionada
     const showTooltip = isHovered && !isDestroyed && (level > 0 || isAtLeastOnce) && mutation;
     const showDestroyedTooltip = isHovered && isDestroyed;
     const showMaxedTooltip = isHovered && !canInteract && isAtLeastOnce && !isDestroyed;
+
+    // ── Color del badge de conteo según estado ──
+    const badgeColor = isAtLeastOnce && nextPutrefLevel > 0
+      ? activePState.color
+      : '#facc15'; // dorado por defecto
 
     return (
       <div key={sk + idx} className="relative">
@@ -145,7 +182,7 @@ export function EnemyCard({
           }
           {isDestroyed && <span className="absolute bottom-0 right-0 text-[6px] bg-red-900 text-white px-0.5">X</span>}
           {isAtLeastOnce && (
-            <span className="absolute -top-1 -right-1 text-[8px] font-black text-yellow-300" style={{ textShadow: '0 0 4px rgba(250,204,21,0.8)' }}>
+            <span className="absolute -top-1 -right-1 text-[8px] font-black" style={{ color: badgeColor, textShadow: `0 0 4px ${badgeColor}cc` }}>
               {timesSelected === 1 ? playerActionOrder.indexOf(sk) + 1 : `x${timesSelected}`}
             </span>
           )}
@@ -163,9 +200,9 @@ export function EnemyCard({
         </motion.button>
         {showTooltip && (
           <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
-            <div className="bg-black/90 border rounded-lg px-2 py-1 text-[7px] sm:text-[8px] whitespace-nowrap" style={{ borderColor: pState.color }}>
-              <div className="font-black" style={{ color: pState.color }}>
-                {pState.emoji} {slotName(slot || '')} - {pState.name}
+            <div className="bg-black/90 border rounded-lg px-2 py-1 text-[7px] sm:text-[8px] whitespace-nowrap" style={{ borderColor: activePState.color }}>
+              <div className="font-black" style={{ color: activePState.color }}>
+                {activePState.emoji} {slotName(slot || '')} - {activePState.name}
               </div>
               {mutation.logDesc && <div className="text-white/70 mt-0.5">{mutation.logDesc}</div>}
               <div className="text-white/40 mt-0.5">Usos restantes: {remainingUses}{isAtLeastOnce ? ` (seleccionada x${timesSelected})` : ''}</div>
